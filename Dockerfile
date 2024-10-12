@@ -8,6 +8,7 @@ COPY . /app
 
 # Build backend
 WORKDIR /app/NullAway-Sandbox/compiler
+COPY ./build.sh ./build.sh
 RUN chmod +x ./build.sh
 RUN ./build.sh
 
