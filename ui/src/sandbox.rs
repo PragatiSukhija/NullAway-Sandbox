@@ -177,6 +177,24 @@ fn build_execution_command(
             cmd.push("--enable-preview".to_string());
         }
 
+        //Added for Error-prone integration
+        cmd.extend([
+            "-J--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED".to_string(),
+            "-J--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED".to_string(),
+            "-J--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED".to_string(),
+            "-J--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED".to_string(),
+            "-J--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED".to_string(),
+            "-J--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED".to_string(),
+            "-J--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED".to_string(),
+            "-J--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED".to_string(),
+            "-J--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED".to_string(),
+            "-J--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED".to_string(),
+            "-XDcompilePolicy=simple".to_string(),
+            "-processorpath".to_string(),
+            "plugins/error_prone_core-2.32.0-with-dependencies.jar:plugins/dataflow-errorprone-3.42.0-eisop4.jar:plugins/nullaway-0.10.25.jar:plugins/jspecify-1.0.0.jar:plugins/dataflow-nullaway-3.47.0.jar:plugins/checker-qual-3.9.1.jar:plugins/jsr305-3.0.2.jar".to_string(),
+            "-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepOpt:NullAway:AnnotatedPackages=com.example".to_string()
+        ]);
+
         cmd.push("Main.java".to_string());
     }
 

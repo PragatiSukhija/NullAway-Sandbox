@@ -240,4 +240,58 @@
          </dependency>
                  
     </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Maven Compiler Plugin for NullAway and Error Prone -->
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-plugin-dependencies</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/plugins</outputDirectory>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>com.google.errorprone</groupId>
+                                    <artifactId>error_prone_core</artifactId>
+                                    <version>2.32.0</version>
+                                    <classifier>with-dependencies</classifier>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>io.github.eisop</groupId>
+                                    <artifactId>dataflow-errorprone</artifactId>
+                                    <version>3.42.0-eisop4</version>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>com.uber.nullaway</groupId>
+                                    <artifactId>nullaway</artifactId>
+                                    <version>0.10.25</version>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>org.checkerframework</groupId>
+                                    <artifactId>checker-qual</artifactId>
+                                    <version>3.9.1</version>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>org.checkerframework</groupId>
+                                    <artifactId>dataflow-nullaway</artifactId>
+                                    <version>3.47.0</version>
+                                </artifactItem>
+
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
 </project>
