@@ -30,8 +30,8 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/GITHUB_USERNAME/nullaway-sandbox:latest
+          tags: ghcr.io/pragatisukhija/nullaway-sandbox:latest
 
       - name: Verify image
         run: |
-          docker pull ghcr.io/GITHUB_USERNAME/nullaway-sandbox:latest
+          docker pull ghcr.io/pragatisukhija/nullaway-sandbox:latest
