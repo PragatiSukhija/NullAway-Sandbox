@@ -1,52 +1,36 @@
-name: Build CI Pipeline
+name: Build and Push Docker Image to GHCR
 
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v2
 
-      # Set up Node.js environment
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
         with:
-          node-version: '14'
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.TOKEN }}
 
-      # Install and build the frontend
-      - name: Install and build frontend
-        run: |
-          cd ui/frontend
-          yarn install
-          yarn run build
-
-      # Set up Rust environment
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v2
         with:
-          toolchain: stable
-          default: true
-          override: true
+          context: .
+          push: true
+          tags: ghcr.io/GITHUB_USERNAME/nullaway-sandbox:latest
 
-      # Build Rust server
-      - name: Build Rust server
+      - name: Verify image
         run: |
-          cd ui
-          cargo build --release
-
-      # Build the compiler containers
-      - name: Build compiler tools
-        run: |
-          cd compiler
-          chmod +x build.sh
-          ./build.sh
-
+          docker pull ghcr.io/GITHUB_USERNAME/nullaway-sandbox:latest
