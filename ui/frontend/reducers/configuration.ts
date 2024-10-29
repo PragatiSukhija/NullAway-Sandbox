@@ -14,6 +14,8 @@ import {
 } from '../types';
 
 export interface State {
+  checkContracts: boolean;
+  jSpecifyMode: boolean;
   editor: Editor;
   ace: {
     keybinding: string;
@@ -34,6 +36,8 @@ export interface State {
 }
 
 const DEFAULT: State = {
+  checkContracts: false,
+  jSpecifyMode: false,
   editor: Editor.Ace,
   ace: {
     keybinding: 'ace',
@@ -102,6 +106,11 @@ export default function configuration(state = DEFAULT, action: Action): State {
     }
     case ActionType.ChangePreview:
       return { ...state, preview: action.preview, release: maxRelease(state.runtime) };
+    case ActionType.ChangeCheckContracts:
+      return { ...state, checkContracts: action.checkContracts };
+    case ActionType.ChangeJSpecifyMode:
+      return { ...state, jSpecifyMode: action.jSpecifyMode };
+
     default:
       return state;
   }

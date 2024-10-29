@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, {useCallback, useState} from 'react';
 import { useSelector } from 'react-redux';
 
 import AdvancedOptionsMenu from './AdvancedOptionsMenu';
@@ -16,6 +16,7 @@ import { useAppDispatch } from './configureStore';
 import { performGistSave } from './reducers/output/gist';
 
 import styles from './Header.module.css';
+import NullAwayConfigMenu from './NullAwayConfigMenu';
 
 const Header: React.FC = () => (
   <div data-test-id="header" className={styles.container}>
@@ -23,12 +24,14 @@ const Header: React.FC = () => (
       <SegmentedButtonSet>
         <ExecuteButton />
         <BuildMenuButton />
+        <NullAwayBuildMenuButton />
       </SegmentedButtonSet>
     </HeaderSet>
     <HeaderSet id="channel-mode">
       <SegmentedButtonSet>
-        <RuntimeMenuButton />
-        <AdvancedOptionsMenuButton />
+        {/*<RuntimeMenuButton />
+        <AdvancedOptionsMenuButton />*/}
+        <NullAwayConfigMenuButton />
       </SegmentedButtonSet>
     </HeaderSet>
     <HeaderSet id="share">
@@ -89,6 +92,16 @@ const BuildMenuButton: React.FC = () => {
   return <PopButton Button={Button} Menu={BuildMenu} />;
 };
 
+const NullAwayBuildMenuButton: React.FC = () => {
+  const Button = React.forwardRef<HTMLButtonElement, { toggle: () => void }>(({ toggle }, ref) => (
+    <SegmentedButton title="Select what to build" ref={ref} onClick={toggle}>
+    </SegmentedButton>
+  ));
+  Button.displayName = 'Build With NullAway';
+
+  return <PopButton Button={Button} Menu={BuildMenu} />;
+};
+
 const RuntimeMenuButton: React.FC = () => {
   const label = useSelector(selectors.getRuntimeLabel);
 
@@ -102,6 +115,7 @@ const RuntimeMenuButton: React.FC = () => {
   return <PopButton Button={Button} Menu={RuntimeMenu} />;
 }
 
+
 const AdvancedOptionsMenuButton: React.FC = () => {
   const advancedOptionsSet = useSelector(selectors.getAdvancedOptionsSet);
 
@@ -114,6 +128,19 @@ const AdvancedOptionsMenuButton: React.FC = () => {
 
   return <PopButton Button={Button} Menu={AdvancedOptionsMenu} />;
 }
+
+const NullAwayConfigMenuButton: React.FC = () => {
+  const Button = React.forwardRef<HTMLButtonElement, { toggle: () => void }>(({ toggle }, ref) => (
+    <SegmentedButton title="Advanced compilation flags" ref={ref} onClick={toggle}>
+      <HeaderButton icon={<ConfigIcon />} isExpandable>NullAway Config</HeaderButton>
+    </SegmentedButton>
+  ));
+  Button.displayName = 'NullAwayConfigMenuButton.Button';
+
+  return <PopButton Button={Button} Menu={NullAwayConfigMenu} />;
+};
+
+
 
 const ShareButton: React.FC = () => {
   const dispatch = useAppDispatch();

@@ -73,6 +73,7 @@ export enum PrimaryActionAuto {
 export enum PrimaryActionCore {
   Compile = 'compile',
   Execute = 'execute',
+  ExecuteNullAway = 'nullaway',
 }
 
 export type PrimaryAction = PrimaryActionCore | PrimaryActionAuto;

@@ -106,6 +106,8 @@ export enum ActionType {
   NotificationSeen = 'NOTIFICATION_SEEN',
   BrowserWidthChanged = 'BROWSER_WIDTH_CHANGED',
   SplitRatioChanged = 'SPLIT_RATIO_CHANGED',
+  ChangeCheckContracts = 'CHANGE_CHECK_CONTRACTS',
+  ChangeJSpecifyMode = 'CHANGE_JSPECIFY_MODE',
 }
 
 export const initializeApplication = () => createAction(ActionType.InitializeApplication);
@@ -132,6 +134,12 @@ export const changeMonacoTheme = (theme: string) =>
 
 export const changePairCharacters = (pairCharacters: PairCharacters) =>
   createAction(ActionType.ChangePairCharacters, { pairCharacters });
+
+export const changeCheckContracts = (checkContracts: boolean) =>
+  createAction(ActionType.ChangeCheckContracts, { checkContracts });
+
+export const changeJSpecifyMode = (jSpecifyMode: boolean) =>
+  createAction(ActionType.ChangeJSpecifyMode, { jSpecifyMode });
 
 export const changeOrientation = (orientation: Orientation) =>
   createAction(ActionType.ChangeOrientation, { orientation });
@@ -254,6 +262,8 @@ function performAutoOnly(): ThunkAction {
 const performExecuteOnly = (): ThunkAction => performCommonExecute('run');
 const performCompileOnly = (): ThunkAction => performCommonExecute('build');
 
+const performNullAwayCompileOnly = (): ThunkAction => performCommonExecute('buildWithNullAway');
+
 
 interface CompileSuccess {
   code: string;
@@ -264,6 +274,7 @@ interface CompileSuccess {
 interface CompileFailure {
   error: string;
 }
+
 
 const requestCompileAssembly = () =>
   createAction(ActionType.CompileAssemblyRequest);
@@ -313,6 +324,7 @@ const receiveCompileWasmFailure = ({ error }: CompileFailure) =>
 const PRIMARY_ACTIONS: { [index in PrimaryAction]: () => ThunkAction } = {
   [PrimaryActionCore.Compile]: performCompileOnly,
   [PrimaryActionCore.Execute]: performExecuteOnly,
+  [PrimaryActionCore.ExecuteNullAway] : performNullAwayCompileOnly,
   [PrimaryActionAuto.Auto]: performAutoOnly,
 };
 
@@ -331,6 +343,10 @@ export const performExecute =
   performAndSwitchPrimaryAction(performExecuteOnly, PrimaryActionCore.Execute);
 export const performCompile =
   performAndSwitchPrimaryAction(performCompileOnly, PrimaryActionCore.Compile);
+
+export const performNullAwayCompile =
+    performAndSwitchPrimaryAction(performNullAwayCompileOnly, PrimaryActionCore.ExecuteNullAway);
+
 
 export const editCode = (code: string) =>
   createAction(ActionType.EditCode, { code });
@@ -554,6 +570,7 @@ function parsePreview(s?: string): Preview | null {
   }
 }
 
+
 export function indexPageLoad({
   code,
   gist,
@@ -596,6 +613,8 @@ export type Action =
   | ReturnType<typeof disableSyncChangesToStorage>
   | ReturnType<typeof setPage>
   | ReturnType<typeof changePairCharacters>
+  | ReturnType<typeof changeCheckContracts>
+  | ReturnType<typeof changeJSpecifyMode>
   | ReturnType<typeof changeAssemblyFlavor>
   | ReturnType<typeof changePreview>
   | ReturnType<typeof changeRuntime>

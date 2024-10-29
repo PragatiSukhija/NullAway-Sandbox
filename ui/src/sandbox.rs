@@ -166,7 +166,7 @@ fn build_execution_command(
         }
 
         cmd.push("Main.java".to_string());
-    } else if action == Build {
+    } else if action == BuildWithNullAway {
         cmd.push("javac".to_string());
         cmd.extend(["--module-path".to_string(), "dependencies".to_string()]);
         cmd.extend(["--add-modules".to_string(), "ALL-MODULE-PATH".to_string()]);
@@ -194,6 +194,18 @@ fn build_execution_command(
             "plugins/error_prone_core-2.32.0-with-dependencies.jar:plugins/dataflow-errorprone-3.42.0-eisop4.jar:plugins/nullaway-0.10.25.jar:plugins/jspecify-1.0.0.jar:plugins/dataflow-nullaway-3.47.0.jar:plugins/checker-qual-3.9.1.jar:plugins/jsr305-3.0.2.jar".to_string(),
             "-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepOpt:NullAway:AnnotatedPackages=com.example".to_string()
         ]);
+
+        cmd.push("Main.java".to_string());
+    }else if action==Build{
+        cmd.push("javac".to_string());
+        cmd.extend(["--module-path".to_string(), "dependencies".to_string()]);
+        cmd.extend(["--add-modules".to_string(), "ALL-MODULE-PATH".to_string()]);
+        cmd.extend(["--release".to_string(), release.to_string()]);
+        cmd.extend(["-d".to_string(), "out".to_string()]);
+
+        if req.preview() {
+            cmd.push("--enable-preview".to_string());
+        }
 
         cmd.push("Main.java".to_string());
     }
@@ -484,6 +496,7 @@ impl Release {
 pub enum Action {
     Run,
     Build,
+    BuildWithNullAway,
 }
 
 impl Action {

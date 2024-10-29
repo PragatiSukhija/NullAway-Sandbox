@@ -44,8 +44,12 @@ export const getAction = createSelector(
   ( primaryAction) => {
     if (primaryAction === PrimaryActionCore.Execute) {
       return 'run';
-    } else {
-      return 'build';
+    }
+    if (primaryAction === PrimaryActionCore.Compile){
+      return 'build'
+    }
+    else {
+      return 'buildWithNullAway';
     }
   },
 );
@@ -71,6 +75,8 @@ const primaryActionSelector = createSelector(
 const LABELS: { [index in PrimaryActionCore]: string } = {
   [PrimaryActionCore.Compile]: 'Build',
   [PrimaryActionCore.Execute]: 'Run',
+  [PrimaryActionCore.ExecuteNullAway]: 'Build With NullAway',
+
 };
 
 export const getExecutionLabel = createSelector(primaryActionSelector, primaryAction => LABELS[primaryAction]);

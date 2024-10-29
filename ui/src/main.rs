@@ -409,6 +409,7 @@ fn parse_action(s: &str) -> Result<Option<sandbox::Action>> {
         "" => None,
         "run" => Some(Action::Run),
         "build" => Some(Action::Build),
+        "buildWithNullAway" => Some(Action::BuildWithNullAway),
         value => InvalidActionSnafu { value }.fail()?,
     })
 }
