@@ -10,7 +10,7 @@ import {
   Editor,
   Focus,
   makePosition,
-  Notification,
+  Notification, NullAwayConfigData,
   Orientation,
   Page,
   PairCharacters,
@@ -53,6 +53,7 @@ export type SimpleThunkAction<T = void> = ReduxThunkAction<T, State, {}, AnyActi
 const createAction = <T extends string, P extends {}>(type: T, props?: P) => (
   Object.assign({ type }, props)
 );
+
 
 export enum ActionType {
   InitializeApplication = 'INITIALIZE_APPLICATION',
@@ -106,9 +107,9 @@ export enum ActionType {
   NotificationSeen = 'NOTIFICATION_SEEN',
   BrowserWidthChanged = 'BROWSER_WIDTH_CHANGED',
   SplitRatioChanged = 'SPLIT_RATIO_CHANGED',
-  ChangeCheckContracts = 'CHANGE_CHECK_CONTRACTS',
-  ChangeJSpecifyMode = 'CHANGE_JSPECIFY_MODE',
+  PerformNullAwayBuild = 'PERFORM_NULLAWAY_BUILD',
 }
+
 
 export const initializeApplication = () => createAction(ActionType.InitializeApplication);
 
@@ -119,6 +120,14 @@ const setPage = (page: Page) =>
 
 export const navigateToIndex = () => setPage('index');
 export const navigateToHelp = () => setPage('help');
+
+export const performNullAwayBuild = (configData: NullAwayConfigData) => {
+  // Log configData to console
+  console.log('Config Data:', configData);
+
+  // Return the action with configData payload
+  return createAction(ActionType.PerformNullAwayBuild, configData);
+};
 
 export const changeEditor = (editor: Editor) =>
   createAction(ActionType.ChangeEditor, { editor });
@@ -135,11 +144,6 @@ export const changeMonacoTheme = (theme: string) =>
 export const changePairCharacters = (pairCharacters: PairCharacters) =>
   createAction(ActionType.ChangePairCharacters, { pairCharacters });
 
-export const changeCheckContracts = (checkContracts: boolean) =>
-  createAction(ActionType.ChangeCheckContracts, { checkContracts });
-
-export const changeJSpecifyMode = (jSpecifyMode: boolean) =>
-  createAction(ActionType.ChangeJSpecifyMode, { jSpecifyMode });
 
 export const changeOrientation = (orientation: Orientation) =>
   createAction(ActionType.ChangeOrientation, { orientation });
@@ -262,7 +266,8 @@ function performAutoOnly(): ThunkAction {
 const performExecuteOnly = (): ThunkAction => performCommonExecute('run');
 const performCompileOnly = (): ThunkAction => performCommonExecute('build');
 
-const performNullAwayCompileOnly = (): ThunkAction => performCommonExecute('buildWithNullAway');
+const performNullAwayCompileOnly = (configData?: NullAwayConfigData): ThunkAction =>
+  performCommonExecute('buildWithNullAway', configData);
 
 
 interface CompileSuccess {
@@ -334,9 +339,9 @@ export const performPrimaryAction = (): ThunkAction => (dispatch, getState) => {
   dispatch(primaryAction());
 };
 
-const performAndSwitchPrimaryAction = (inner: () => ThunkAction, id: PrimaryAction) => (): ThunkAction => dispatch => {
+const performAndSwitchPrimaryAction = (inner: (configData?: NullAwayConfigData) => ThunkAction, id: PrimaryAction, configData?: NullAwayConfigData) => (): ThunkAction => dispatch => {
   dispatch(changePrimaryAction(id));
-  dispatch(inner());
+  dispatch(inner(configData));
 };
 
 export const performExecute =
@@ -344,8 +349,9 @@ export const performExecute =
 export const performCompile =
   performAndSwitchPrimaryAction(performCompileOnly, PrimaryActionCore.Compile);
 
-export const performNullAwayCompile =
-    performAndSwitchPrimaryAction(performNullAwayCompileOnly, PrimaryActionCore.ExecuteNullAway);
+export const performNullAwayCompile = (configData?: NullAwayConfigData) => {
+  return performCommonExecute('buildWithNullAway', configData);
+};
 
 
 export const editCode = (code: string) =>
@@ -613,8 +619,6 @@ export type Action =
   | ReturnType<typeof disableSyncChangesToStorage>
   | ReturnType<typeof setPage>
   | ReturnType<typeof changePairCharacters>
-  | ReturnType<typeof changeCheckContracts>
-  | ReturnType<typeof changeJSpecifyMode>
   | ReturnType<typeof changeAssemblyFlavor>
   | ReturnType<typeof changePreview>
   | ReturnType<typeof changeRuntime>

@@ -139,7 +139,7 @@ fn basic_secure_docker_command() -> Command {
 }
 
 fn build_execution_command(
-    req: &(impl ActionRequest + PreviewRequest + ReleaseRequest + RuntimeRequest),
+    req: &(impl ActionRequest + PreviewRequest + ReleaseRequest + RuntimeRequest + NullAwayConfigDataRequest),
 ) -> Vec<String> {
     use self::Action::*;
 
@@ -151,6 +151,7 @@ fn build_execution_command(
         .java_release();
 
     let action = req.action();
+
 
     if action == Run {
         cmd.push("java".to_string());
@@ -166,7 +167,14 @@ fn build_execution_command(
         }
 
         cmd.push("Main.java".to_string());
-    } else if action == BuildWithNullAway {
+    } else if action == BuildWithNullAway{
+
+        if let Some(nullaway_config_data) = req.nullaway_config_data() {
+            println!("{:?}", nullaway_config_data);
+        } else {
+            println!("config_data is None");
+        }
+
         cmd.push("javac".to_string());
         cmd.extend(["--module-path".to_string(), "dependencies".to_string()]);
         cmd.extend(["--add-modules".to_string(), "ALL-MODULE-PATH".to_string()]);
@@ -316,7 +324,7 @@ impl Sandbox {
 
     fn execute_command(
         &self,
-        req: impl ActionRequest + ReleaseRequest + PreviewRequest + RuntimeRequest,
+        req: impl ActionRequest + ReleaseRequest + PreviewRequest + RuntimeRequest + NullAwayConfigDataRequest,
     ) -> Command {
         let mut cmd = self.docker_command(Some(req.action()));
 
@@ -527,6 +535,8 @@ impl<R: ActionRequest> ActionRequest for &'_ R {
     }
 }
 
+
+
 trait ReleaseRequest {
     fn release(&self) -> Option<Release>;
 }
@@ -551,6 +561,11 @@ trait RuntimeRequest {
     fn runtime(&self) -> Runtime;
 }
 
+pub trait NullAwayConfigDataRequest {
+    fn nullaway_config_data(&self) -> Option<&ConfigData>;
+}
+
+
 impl<R: RuntimeRequest> RuntimeRequest for &'_ R {
     fn runtime(&self) -> Runtime {
         (*self).runtime()
@@ -564,11 +579,17 @@ pub struct CompileRequest {
     pub release: Option<Release>,
     pub preview: bool,
     pub code: String,
+    pub configData: Option<ConfigData>,
 }
 
 impl ActionRequest for CompileRequest {
     fn action(&self) -> Action {
         self.action
+    }
+}
+impl NullAwayConfigDataRequest for CompileRequest {
+    fn nullaway_config_data(&self) -> Option<&ConfigData> {
+        self.configData.as_ref()
     }
 }
 
@@ -590,6 +611,14 @@ impl RuntimeRequest for CompileRequest {
     }
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct ConfigData {
+    pub castToNonNullMethod: Option<String>,
+    pub checkOptionalEmptiness: bool,
+    pub checkContracts: bool,
+    pub jSpecifyMode: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct CompileResponse {
     pub success: bool,
@@ -605,6 +634,7 @@ pub struct ExecuteRequest {
     pub action: Action,
     pub preview: bool,
     pub code: String,
+    pub configData: Option<ConfigData>,
 }
 
 impl ActionRequest for ExecuteRequest {
@@ -612,6 +642,13 @@ impl ActionRequest for ExecuteRequest {
         self.action
     }
 }
+
+impl NullAwayConfigDataRequest for &ExecuteRequest  {
+    fn nullaway_config_data(&self) -> Option<&ConfigData> {
+        self.configData.as_ref()
+    }
+}
+
 
 impl ReleaseRequest for ExecuteRequest {
     fn release(&self) -> Option<Release> {
@@ -630,6 +667,7 @@ impl RuntimeRequest for ExecuteRequest {
         self.runtime
     }
 }
+
 
 #[derive(Debug, Clone)]
 pub struct ExecuteResponse {
@@ -676,6 +714,7 @@ mod test {
                 code: HELLO_WORLD_CODE.to_string(),
                 release: None,
                 preview: false,
+                configData: None,
             }
         }
     }
@@ -688,6 +727,7 @@ mod test {
                 code: HELLO_WORLD_CODE.to_string(),
                 release: None,
                 preview: false,
+                configData: None,
             }
         }
     }

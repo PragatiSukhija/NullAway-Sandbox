@@ -126,3 +126,10 @@ export enum Notification {
 }
 
 export type AceResizeKey = [Focus | undefined, number];
+
+export interface NullAwayConfigData {
+  castToNonNullMethod: string;
+  checkOptionalEmptiness: boolean;
+  checkContracts: boolean;
+  jSpecifyMode: boolean;
+}

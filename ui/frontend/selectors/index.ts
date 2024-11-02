@@ -9,7 +9,7 @@ import {
   Preview,
   PrimaryActionAuto,
   PrimaryActionCore,
-  Version, Runtime,
+  Version, Runtime, NullAwayConfigData,
 } from '../types';
 
 export const codeSelector = (state: State) => state.code;
@@ -345,6 +345,7 @@ export const websocketStatusSelector = createSelector(
   }
 );
 
+/*
 export const executeRequestPayloadSelector = createSelector(
   codeSelector,
   (state: State) => state.configuration,
@@ -357,3 +358,19 @@ export const executeRequestPayloadSelector = createSelector(
     preview: configuration.preview == Preview.Enabled,
   }),
 );
+ */
+
+export const executeRequestPayloadSelector = createSelector(
+  codeSelector,
+  (state: State) => state.configuration,
+  (_state: State, { action, configData }: { action: string; configData?: NullAwayConfigData }) => ({ action, configData }),
+  (code, configuration, { action, configData }) => ({
+    runtime: configuration.runtime,
+    release: configuration.release,
+    action,
+    code,
+    preview: configuration.preview == Preview.Enabled,
+    ...configData && { configData }, // Add configData if it exists
+  }),
+);
+

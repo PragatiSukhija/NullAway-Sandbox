@@ -1,40 +1,43 @@
-import React, {Fragment, useCallback, useState} from 'react';
-
+import React, { Fragment, useCallback, useState } from 'react';
 import MenuGroup from './MenuGroup';
-import {CheckboxConfig} from './ConfigElement';
-import {SegmentedButton} from './SegmentedButton';
+import { CheckboxConfig } from './ConfigElement';
+import { SegmentedButton } from './SegmentedButton';
 import HeaderButton from './HeaderButton';
-import {BuildIcon} from './Icon';
+import { BuildIcon } from './Icon';
 import * as actions from './actions';
-import {useAppDispatch} from './configureStore';
+import {NullAwayConfigData} from './types';
+import {useDispatch} from 'react-redux';
 
-const useDispatchAndClose = (action: () => actions.ThunkAction, close: () => void) => {
-  const dispatch = useAppDispatch();
-
-  return useCallback(
-    () => {
-      dispatch(action());
-      close();
-    },
-    [action, close, dispatch]
-  );
+interface BuildMenuProps {
+  close: () => void;
 }
 
 
-const NullAwayConfigMenu = () => {
+const NullAwayConfigMenu: React.FC<BuildMenuProps> = (props) => {
   const [castToNonNullMethod, setCastToNonNullMethod] = useState('');
   const [checkOptionalEmptiness, setCheckOptionalEmptiness] = useState(false);
   const [checkContracts, setCheckContracts] = useState(false);
-  const [jspecifyMode, setJSpecifyMode] = useState(false);
+  const [jSpecifyMode, setJSpecifyMode] = useState(false);
 
-  const nullawaycompile = useDispatchAndClose(actions.performNullAwayCompile, () => {});
+  const configData: NullAwayConfigData = {
+    castToNonNullMethod,
+    checkOptionalEmptiness,
+    checkContracts,
+    jSpecifyMode,
+  };
+
+  const dispatch = useDispatch();
+  const handleBuild = useCallback(() => {
+    dispatch(actions.performNullAwayCompile(configData)); // Dispatch the action
+    props.close(); // Close the prompt
+  }, [dispatch, configData, props]);
 
   return (
     <Fragment>
       <MenuGroup title="NullAway Config">
         <div className="config-item">
           <label>
-            CastToNonNullMethod&nbsp;&nbsp;
+              CastToNonNullMethod&nbsp;&nbsp;
             <input
               type="text"
               value={castToNonNullMethod}
@@ -55,24 +58,20 @@ const NullAwayConfigMenu = () => {
         />
         <CheckboxConfig
           name="&nbsp;&nbsp;JSpecifyMode"
-          checked={jspecifyMode}
-          onChange={() => setJSpecifyMode(!jspecifyMode)}
+          checked={jSpecifyMode}
+          onChange={() => setJSpecifyMode(!jSpecifyMode)}
         />
-
       </MenuGroup>
 
-      <MenuGroup title='Action'>
-        <SegmentedButton isBuild onClick={nullawaycompile}>
+      <MenuGroup title="Action">
+        <SegmentedButton isBuild onClick={handleBuild}> {/* Pass configData here */}
           <HeaderButton bold rightIcon={<BuildIcon />}>
-            Build
+              Build
           </HeaderButton>
         </SegmentedButton>
       </MenuGroup>
-
     </Fragment>
   );
 };
-
-
 
 export default NullAwayConfigMenu;

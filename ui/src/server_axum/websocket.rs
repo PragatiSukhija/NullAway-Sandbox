@@ -1,9 +1,5 @@
 use crate::sandbox::Action;
-use crate::{
-    metrics, parse_action, parse_release, parse_runtime,
-    sandbox::{self, Sandbox},
-    Error, ExecutionSnafu, Result, SandboxCreationSnafu, WebSocketTaskPanicSnafu,
-};
+use crate::{metrics, parse_action, parse_release, parse_runtime, sandbox::{self, Sandbox}, Error, ExecutionSnafu, Result, SandboxCreationSnafu, WebSocketTaskPanicSnafu, ConfigData};
 use axum::extract::ws::{Message, WebSocket};
 use snafu::prelude::*;
 use std::{
@@ -45,6 +41,7 @@ struct ExecuteRequest {
     action: String,
     code: String,
     preview: bool,
+    configData: Option<ConfigData>,
 }
 
 impl TryFrom<ExecuteRequest> for sandbox::ExecuteRequest {
@@ -57,6 +54,7 @@ impl TryFrom<ExecuteRequest> for sandbox::ExecuteRequest {
             action,
             code,
             preview,
+            configData,
         } = value;
 
         Ok(sandbox::ExecuteRequest {
@@ -65,6 +63,12 @@ impl TryFrom<ExecuteRequest> for sandbox::ExecuteRequest {
             action: parse_action(&action)?.unwrap_or(Action::Run),
             preview,
             code,
+            configData: configData.map(|data| sandbox::ConfigData {
+                castToNonNullMethod: data.castToNonNullMethod,
+                checkOptionalEmptiness: data.checkOptionalEmptiness,
+                checkContracts: data.checkContracts,
+                jSpecifyMode: data.jSpecifyMode,
+            }),
         })
     }
 }

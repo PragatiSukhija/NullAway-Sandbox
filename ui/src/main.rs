@@ -1,7 +1,7 @@
 #![deny(rust_2018_idioms)]
 
 use crate::env::{PLAYGROUND_GITHUB_TOKEN, PLAYGROUND_UI_ROOT};
-use crate::sandbox::Action;
+use crate::sandbox::{Action};
 use serde::{Deserialize, Serialize};
 use snafu::prelude::*;
 use std::{
@@ -214,9 +214,22 @@ pub enum Error {
 
 type Result<T, E = Error> = ::std::result::Result<T, E>;
 
+
 #[derive(Debug, Clone, Serialize)]
 struct ErrorJson {
     error: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ConfigData {
+    #[serde(default)]
+    castToNonNullMethod: Option<String>,
+    #[serde(default)]
+    checkOptionalEmptiness: bool,
+    #[serde(default)]
+    checkContracts: bool,
+    #[serde(default)]
+    jSpecifyMode: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -228,6 +241,7 @@ struct CompileRequest {
     #[serde(default)]
     preview: bool,
     code: String,
+    configData: Option<ConfigData>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -247,6 +261,7 @@ struct ExecuteRequest {
     #[serde(default)]
     preview: bool,
     code: String,
+    configData: Option<ConfigData>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -297,6 +312,13 @@ impl TryFrom<CompileRequest> for sandbox::CompileRequest {
             action: parse_action(&me.action)?.unwrap_or(Action::Build),
             preview: me.preview,
             code: me.code,
+            configData: me.configData.map(|data| sandbox::ConfigData {
+                castToNonNullMethod: data.castToNonNullMethod,
+                checkOptionalEmptiness: data.checkOptionalEmptiness,
+                checkContracts: data.checkContracts,
+                jSpecifyMode: data.jSpecifyMode,
+            }),
+
         })
     }
 }
@@ -322,6 +344,12 @@ impl TryFrom<ExecuteRequest> for sandbox::ExecuteRequest {
             action: parse_action(&me.action)?.unwrap_or(Action::Run),
             preview: me.preview,
             code: me.code,
+            configData: me.configData.map(|data| sandbox::ConfigData {
+                castToNonNullMethod: data.castToNonNullMethod,
+                checkOptionalEmptiness: data.checkOptionalEmptiness,
+                checkContracts: data.checkContracts,
+                jSpecifyMode: data.jSpecifyMode,
+            }),
         })
     }
 }
