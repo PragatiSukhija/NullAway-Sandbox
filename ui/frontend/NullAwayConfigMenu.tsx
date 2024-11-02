@@ -19,7 +19,7 @@ const NullAwayConfigMenu: React.FC<BuildMenuProps> = (props) => {
   const [checkContracts, setCheckContracts] = useState(false);
   const [jSpecifyMode, setJSpecifyMode] = useState(false);
 
-  const configData: NullAwayConfigData = {
+  const nullawayConfigData: NullAwayConfigData = {
     castToNonNullMethod,
     checkOptionalEmptiness,
     checkContracts,
@@ -28,9 +28,9 @@ const NullAwayConfigMenu: React.FC<BuildMenuProps> = (props) => {
 
   const dispatch = useDispatch();
   const handleBuild = useCallback(() => {
-    dispatch(actions.performNullAwayCompile(configData)); // Dispatch the action
+    dispatch(actions.performNullAwayCompile(nullawayConfigData)); // Dispatch the action
     props.close(); // Close the prompt
-  }, [dispatch, configData, props]);
+  }, [dispatch, nullawayConfigData, props]);
 
   return (
     <Fragment>

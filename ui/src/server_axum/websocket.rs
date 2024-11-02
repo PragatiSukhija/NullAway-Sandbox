@@ -1,5 +1,5 @@
 use crate::sandbox::Action;
-use crate::{metrics, parse_action, parse_release, parse_runtime, sandbox::{self, Sandbox}, Error, ExecutionSnafu, Result, SandboxCreationSnafu, WebSocketTaskPanicSnafu, ConfigData};
+use crate::{metrics, parse_action, parse_release, parse_runtime, sandbox::{self, Sandbox}, Error, ExecutionSnafu, Result, SandboxCreationSnafu, WebSocketTaskPanicSnafu, NullAwayConfigData};
 use axum::extract::ws::{Message, WebSocket};
 use snafu::prelude::*;
 use std::{
@@ -41,7 +41,7 @@ struct ExecuteRequest {
     action: String,
     code: String,
     preview: bool,
-    configData: Option<ConfigData>,
+    nullaway_config_data: Option<NullAwayConfigData>,
 }
 
 impl TryFrom<ExecuteRequest> for sandbox::ExecuteRequest {
@@ -54,7 +54,7 @@ impl TryFrom<ExecuteRequest> for sandbox::ExecuteRequest {
             action,
             code,
             preview,
-            configData,
+            nullaway_config_data: config_data,
         } = value;
 
         Ok(sandbox::ExecuteRequest {
@@ -63,11 +63,11 @@ impl TryFrom<ExecuteRequest> for sandbox::ExecuteRequest {
             action: parse_action(&action)?.unwrap_or(Action::Run),
             preview,
             code,
-            configData: configData.map(|data| sandbox::ConfigData {
-                castToNonNullMethod: data.castToNonNullMethod,
-                checkOptionalEmptiness: data.checkOptionalEmptiness,
-                checkContracts: data.checkContracts,
-                jSpecifyMode: data.jSpecifyMode,
+            nullaway_config_data: config_data.map(|data| sandbox::NullAwayConfigData {
+                cast_to_non_null_method: data.cast_to_non_null_method,
+                check_optional_emptiness: data.check_optional_emptiness,
+                check_contracts: data.check_contracts,
+                j_specify_mode: data.j_specify_mode,
             }),
         })
     }

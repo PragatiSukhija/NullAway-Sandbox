@@ -169,12 +169,6 @@ fn build_execution_command(
         cmd.push("Main.java".to_string());
     } else if action == BuildWithNullAway{
 
-        if let Some(nullaway_config_data) = req.nullaway_config_data() {
-            println!("{:?}", nullaway_config_data);
-        } else {
-            println!("config_data is None");
-        }
-
         cmd.push("javac".to_string());
         cmd.extend(["--module-path".to_string(), "dependencies".to_string()]);
         cmd.extend(["--add-modules".to_string(), "ALL-MODULE-PATH".to_string()]);
@@ -199,9 +193,33 @@ fn build_execution_command(
             "-J--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED".to_string(),
             "-XDcompilePolicy=simple".to_string(),
             "-processorpath".to_string(),
-            "plugins/error_prone_core-2.32.0-with-dependencies.jar:plugins/dataflow-errorprone-3.42.0-eisop4.jar:plugins/nullaway-0.10.25.jar:plugins/jspecify-1.0.0.jar:plugins/dataflow-nullaway-3.47.0.jar:plugins/checker-qual-3.9.1.jar:plugins/jsr305-3.0.2.jar".to_string(),
-            "-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepOpt:NullAway:AnnotatedPackages=com.example".to_string()
+            "plugins/error_prone_core-2.32.0-with-dependencies.jar:plugins/dataflow-errorprone-3.42.0-eisop4.jar:plugins/nullaway-0.10.25.jar:plugins/jspecify-1.0.0.jar:plugins/dataflow-nullaway-3.47.0.jar:plugins/checker-qual-3.9.1.jar:plugins/jsr305-3.0.2.jar".to_string()
         ]);
+
+        let mut error_prone_options = String::from("-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepOpt:NullAway:AnnotatedPackages=com.example");
+
+        if let Some(nullaway_config_data) = req.nullaway_config_data() {
+
+            if let Some(cast_method) = &nullaway_config_data.cast_to_non_null_method {
+                if !cast_method.is_empty() {
+                    error_prone_options.push_str(&format!(" -XepOpt:NullAway:CastToNonNullMethod={}", cast_method));
+                }
+            }
+
+            if nullaway_config_data.check_optional_emptiness {
+                error_prone_options.push_str(" -XepOpt:NullAway:CheckOptionalEmptiness=true");
+            }
+
+            if nullaway_config_data.check_contracts {
+                error_prone_options.push_str(" -XepOpt:NullAway:CheckContracts=true");
+            }
+
+            if nullaway_config_data.j_specify_mode {
+                error_prone_options.push_str(" -XepOpt:NullAway:JSpecifyMode=true");
+            }
+        }
+
+        cmd.extend([error_prone_options]);
 
         cmd.push("Main.java".to_string());
     }else if action==Build{
@@ -562,7 +580,7 @@ trait RuntimeRequest {
 }
 
 pub trait NullAwayConfigDataRequest {
-    fn nullaway_config_data(&self) -> Option<&ConfigData>;
+    fn nullaway_config_data(&self) -> Option<&NullAwayConfigData>;
 }
 
 
@@ -579,7 +597,7 @@ pub struct CompileRequest {
     pub release: Option<Release>,
     pub preview: bool,
     pub code: String,
-    pub configData: Option<ConfigData>,
+    pub nullaway_config_data: Option<NullAwayConfigData>,
 }
 
 impl ActionRequest for CompileRequest {
@@ -588,8 +606,8 @@ impl ActionRequest for CompileRequest {
     }
 }
 impl NullAwayConfigDataRequest for CompileRequest {
-    fn nullaway_config_data(&self) -> Option<&ConfigData> {
-        self.configData.as_ref()
+    fn nullaway_config_data(&self) -> Option<&NullAwayConfigData> {
+        self.nullaway_config_data.as_ref()
     }
 }
 
@@ -612,11 +630,18 @@ impl RuntimeRequest for CompileRequest {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct ConfigData {
-    pub castToNonNullMethod: Option<String>,
-    pub checkOptionalEmptiness: bool,
-    pub checkContracts: bool,
-    pub jSpecifyMode: bool,
+pub struct NullAwayConfigData {
+    #[serde(rename = "castToNonNullMethod")]
+    pub cast_to_non_null_method: Option<String>,
+
+    #[serde(rename = "checkOptionalEmptiness")]
+    pub check_optional_emptiness: bool,
+
+    #[serde(rename = "checkContracts")]
+    pub check_contracts: bool,
+
+    #[serde(rename = "jSpecifyMode")]
+    pub j_specify_mode: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -634,7 +659,7 @@ pub struct ExecuteRequest {
     pub action: Action,
     pub preview: bool,
     pub code: String,
-    pub configData: Option<ConfigData>,
+    pub nullaway_config_data: Option<NullAwayConfigData>,
 }
 
 impl ActionRequest for ExecuteRequest {
@@ -644,8 +669,8 @@ impl ActionRequest for ExecuteRequest {
 }
 
 impl NullAwayConfigDataRequest for &ExecuteRequest  {
-    fn nullaway_config_data(&self) -> Option<&ConfigData> {
-        self.configData.as_ref()
+    fn nullaway_config_data(&self) -> Option<&NullAwayConfigData> {
+        self.nullaway_config_data.as_ref()
     }
 }
 
@@ -714,7 +739,7 @@ mod test {
                 code: HELLO_WORLD_CODE.to_string(),
                 release: None,
                 preview: false,
-                configData: None,
+                nullaway_config_data: None,
             }
         }
     }
@@ -727,7 +752,7 @@ mod test {
                 code: HELLO_WORLD_CODE.to_string(),
                 release: None,
                 preview: false,
-                configData: None,
+                nullaway_config_data: None,
             }
         }
     }
