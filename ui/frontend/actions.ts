@@ -10,7 +10,7 @@ import {
   Editor,
   Focus,
   makePosition,
-  Notification,
+  Notification, NullAwayConfigData,
   Orientation,
   Page,
   PairCharacters,
@@ -53,6 +53,7 @@ export type SimpleThunkAction<T = void> = ReduxThunkAction<T, State, {}, AnyActi
 const createAction = <T extends string, P extends {}>(type: T, props?: P) => (
   Object.assign({ type }, props)
 );
+
 
 export enum ActionType {
   InitializeApplication = 'INITIALIZE_APPLICATION',
@@ -106,7 +107,9 @@ export enum ActionType {
   NotificationSeen = 'NOTIFICATION_SEEN',
   BrowserWidthChanged = 'BROWSER_WIDTH_CHANGED',
   SplitRatioChanged = 'SPLIT_RATIO_CHANGED',
+  PerformNullAwayBuild = 'PERFORM_NULLAWAY_BUILD',
 }
+
 
 export const initializeApplication = () => createAction(ActionType.InitializeApplication);
 
@@ -117,6 +120,14 @@ const setPage = (page: Page) =>
 
 export const navigateToIndex = () => setPage('index');
 export const navigateToHelp = () => setPage('help');
+
+export const performNullAwayBuild = (configData: NullAwayConfigData) => {
+  // Log configData to console
+  console.log('Config Data:', configData);
+
+  // Return the action with configData payload
+  return createAction(ActionType.PerformNullAwayBuild, configData);
+};
 
 export const changeEditor = (editor: Editor) =>
   createAction(ActionType.ChangeEditor, { editor });
@@ -132,6 +143,7 @@ export const changeMonacoTheme = (theme: string) =>
 
 export const changePairCharacters = (pairCharacters: PairCharacters) =>
   createAction(ActionType.ChangePairCharacters, { pairCharacters });
+
 
 export const changeOrientation = (orientation: Orientation) =>
   createAction(ActionType.ChangeOrientation, { orientation });
@@ -254,6 +266,9 @@ function performAutoOnly(): ThunkAction {
 const performExecuteOnly = (): ThunkAction => performCommonExecute('run');
 const performCompileOnly = (): ThunkAction => performCommonExecute('build');
 
+const performNullAwayCompileOnly = (configData?: NullAwayConfigData): ThunkAction =>
+  performCommonExecute('buildWithNullAway', configData);
+
 
 interface CompileSuccess {
   code: string;
@@ -264,6 +279,7 @@ interface CompileSuccess {
 interface CompileFailure {
   error: string;
 }
+
 
 const requestCompileAssembly = () =>
   createAction(ActionType.CompileAssemblyRequest);
@@ -313,6 +329,7 @@ const receiveCompileWasmFailure = ({ error }: CompileFailure) =>
 const PRIMARY_ACTIONS: { [index in PrimaryAction]: () => ThunkAction } = {
   [PrimaryActionCore.Compile]: performCompileOnly,
   [PrimaryActionCore.Execute]: performExecuteOnly,
+  [PrimaryActionCore.ExecuteNullAway] : performNullAwayCompileOnly,
   [PrimaryActionAuto.Auto]: performAutoOnly,
 };
 
@@ -322,15 +339,20 @@ export const performPrimaryAction = (): ThunkAction => (dispatch, getState) => {
   dispatch(primaryAction());
 };
 
-const performAndSwitchPrimaryAction = (inner: () => ThunkAction, id: PrimaryAction) => (): ThunkAction => dispatch => {
+const performAndSwitchPrimaryAction = (inner: (configData?: NullAwayConfigData) => ThunkAction, id: PrimaryAction, configData?: NullAwayConfigData) => (): ThunkAction => dispatch => {
   dispatch(changePrimaryAction(id));
-  dispatch(inner());
+  dispatch(inner(configData));
 };
 
 export const performExecute =
   performAndSwitchPrimaryAction(performExecuteOnly, PrimaryActionCore.Execute);
 export const performCompile =
   performAndSwitchPrimaryAction(performCompileOnly, PrimaryActionCore.Compile);
+
+export const performNullAwayCompile = (configData?: NullAwayConfigData) => {
+  return performCommonExecute('buildWithNullAway', configData);
+};
+
 
 export const editCode = (code: string) =>
   createAction(ActionType.EditCode, { code });
@@ -553,6 +575,7 @@ function parsePreview(s?: string): Preview | null {
       return null;
   }
 }
+
 
 export function indexPageLoad({
   code,

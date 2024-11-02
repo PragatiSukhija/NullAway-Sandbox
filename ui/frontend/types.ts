@@ -73,6 +73,7 @@ export enum PrimaryActionAuto {
 export enum PrimaryActionCore {
   Compile = 'compile',
   Execute = 'execute',
+  ExecuteNullAway = 'nullaway',
 }
 
 export type PrimaryAction = PrimaryActionCore | PrimaryActionAuto;
@@ -125,3 +126,10 @@ export enum Notification {
 }
 
 export type AceResizeKey = [Focus | undefined, number];
+
+export interface NullAwayConfigData {
+  castToNonNullMethod: string;
+  checkOptionalEmptiness: boolean;
+  checkContracts: boolean;
+  jSpecifyMode: boolean;
+}

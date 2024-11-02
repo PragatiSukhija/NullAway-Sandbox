@@ -102,6 +102,7 @@ export default function configuration(state = DEFAULT, action: Action): State {
     }
     case ActionType.ChangePreview:
       return { ...state, preview: action.preview, release: maxRelease(state.runtime) };
+
     default:
       return state;
   }

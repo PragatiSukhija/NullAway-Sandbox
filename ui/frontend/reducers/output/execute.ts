@@ -3,7 +3,7 @@ import * as z from 'zod';
 
 import { SimpleThunkAction, adaptFetchError, jsonPost, routes } from '../../actions';
 import { executeRequestPayloadSelector, useWebsocketSelector } from '../../selectors';
-import { Release, Runtime } from '../../types';
+import {NullAwayConfigData, Release, Runtime} from '../../types';
 import {
   WsPayloadAction,
   createWebsocketResponseAction,
@@ -119,6 +119,7 @@ const slice = createSlice({
 
 export const { wsExecuteRequest } = slice.actions;
 
+/*
 export const performCommonExecute =
   (action: string): SimpleThunkAction =>
   (dispatch, getState) => {
@@ -132,6 +133,23 @@ export const performCommonExecute =
       dispatch(performExecute(body));
     }
   };
+*/
+
+export const performCommonExecute =
+    (action: string, configData?: NullAwayConfigData): SimpleThunkAction =>
+        (dispatch, getState) => {
+          console.log('Config Data:', configData);
+          const state = getState();
+          const body = executeRequestPayloadSelector(state, { action, configData });
+          const useWebSocket = useWebsocketSelector(state);
+
+          if (useWebSocket) {
+            dispatch(wsExecuteRequest(body));
+          } else {
+            dispatch(performExecute(body));
+          }
+        };
+
 
 export const wsExecuteResponseSchema = createWebsocketResponseSchema(
   wsExecuteResponse,

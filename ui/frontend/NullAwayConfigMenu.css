@@ -1,0 +1,29 @@
+.config-menu {
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    width: 300px; /* Adjust width as necessary */
+    box-shadow: 0 2px 5px rgb(0 0 0 / 20%);
+    font-family: Arial, sans-serif;
+}
+
+.config-item {
+    margin-bottom: 10px;
+}
+
+.config-item label {
+    display: block;
+    font-weight: bold;
+    color: #333;
+}
+
+.config-input, .config-checkbox {
+    margin-top: 5px;
+    display: block;
+    width: 100%;
+}
+
+.config-checkbox {
+    width: auto;
+}
