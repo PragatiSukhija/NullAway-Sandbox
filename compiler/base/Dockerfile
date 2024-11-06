@@ -48,6 +48,9 @@ ENV USER=playground
 ENV PATH=/playground/jre/bin:$PATH
 WORKDIR /playground
 
+RUN mkdir -p config && \
+    echo "config/nullaway.xml\tconfig/scanner.xml" > config/paths.tsv
+
 ADD --chown=playground entrypoint.sh /playground/tools/
 
 ADD --chown=playground postinstall.sh /playground/tools/

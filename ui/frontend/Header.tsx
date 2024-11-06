@@ -97,7 +97,7 @@ const NullAwayBuildMenuButton: React.FC = () => {
     <SegmentedButton title="Select what to build" ref={ref} onClick={toggle}>
     </SegmentedButton>
   ));
-  Button.displayName = 'Build With NullAway';
+  Button.displayName = 'NullAwayBuildMenuButton.Button';
 
   return <PopButton Button={Button} Menu={BuildMenu} />;
 };
