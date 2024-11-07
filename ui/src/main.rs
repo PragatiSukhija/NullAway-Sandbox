@@ -1,7 +1,7 @@
 #![deny(rust_2018_idioms)]
 
 use crate::env::{PLAYGROUND_GITHUB_TOKEN, PLAYGROUND_UI_ROOT};
-use crate::sandbox::{Action};
+use crate::sandbox::{Action, AnnotatorConfig};
 use serde::{Deserialize, Serialize};
 use snafu::prelude::*;
 use std::{
@@ -246,6 +246,8 @@ struct CompileRequest {
     code: String,
     #[serde(rename = "configData")]
     nullaway_config_data: Option<NullAwayConfigData>,
+    #[serde(rename = "annotatorConfig")]
+    annotator_config: Option<AnnotatorConfig>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -267,6 +269,9 @@ struct ExecuteRequest {
     code: String,
     #[serde(rename = "configData")]
     nullaway_config_data: Option<NullAwayConfigData>,
+    #[serde(rename = "annotatorConfig")]
+    annotator_config: Option<AnnotatorConfig>,
+
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -323,6 +328,9 @@ impl TryFrom<CompileRequest> for sandbox::CompileRequest {
                 check_contracts: data.check_contracts,
                 j_specify_mode: data.j_specify_mode,
             }),
+            annotator_config: me.annotator_config.map(|data| sandbox::AnnotatorConfig {
+                suppress_remaining_errors: data.suppress_remaining_errors,
+            }),
 
         })
     }
@@ -355,6 +363,10 @@ impl TryFrom<ExecuteRequest> for sandbox::ExecuteRequest {
                 check_contracts: data.check_contracts,
                 j_specify_mode: data.j_specify_mode,
             }),
+            annotator_config: me.annotator_config.map(|data| sandbox::AnnotatorConfig {
+                suppress_remaining_errors: data.suppress_remaining_errors,
+            }),
+
         })
     }
 }
@@ -443,6 +455,7 @@ fn parse_action(s: &str) -> Result<Option<sandbox::Action>> {
         "run" => Some(Action::Run),
         "build" => Some(Action::Build),
         "buildWithNullAway" => Some(Action::BuildWithNullAway),
+        "runAnnotator" => Some(Action::RunAnnotator),
         value => InvalidActionSnafu { value }.fail()?,
     })
 }

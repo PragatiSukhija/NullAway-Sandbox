@@ -1,4 +1,4 @@
-use crate::sandbox::Action;
+use crate::sandbox::{Action, AnnotatorConfig};
 use crate::{metrics, parse_action, parse_release, parse_runtime, sandbox::{self, Sandbox}, Error, ExecutionSnafu, Result, SandboxCreationSnafu, WebSocketTaskPanicSnafu, NullAwayConfigData};
 use axum::extract::ws::{Message, WebSocket};
 use snafu::prelude::*;
@@ -42,6 +42,7 @@ struct ExecuteRequest {
     code: String,
     preview: bool,
     nullaway_config_data: Option<NullAwayConfigData>,
+    annotator_config: Option<AnnotatorConfig>,
 }
 
 impl TryFrom<ExecuteRequest> for sandbox::ExecuteRequest {
@@ -55,6 +56,7 @@ impl TryFrom<ExecuteRequest> for sandbox::ExecuteRequest {
             code,
             preview,
             nullaway_config_data: config_data,
+            annotator_config: annotator_config,
         } = value;
 
         Ok(sandbox::ExecuteRequest {
@@ -68,6 +70,9 @@ impl TryFrom<ExecuteRequest> for sandbox::ExecuteRequest {
                 check_optional_emptiness: data.check_optional_emptiness,
                 check_contracts: data.check_contracts,
                 j_specify_mode: data.j_specify_mode,
+            }),
+            annotator_config: annotator_config.map(|data| sandbox::AnnotatorConfig {
+                suppress_remaining_errors: data.suppress_remaining_errors,
             }),
         })
     }

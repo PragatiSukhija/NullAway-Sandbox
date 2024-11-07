@@ -4,6 +4,7 @@ import {AnyAction, ThunkAction as ReduxThunkAction} from '@reduxjs/toolkit';
 import {clippyRequestSelector, codeSelector, getAction} from './selectors';
 import State from './state';
 import {
+  AnnotatorConfigData,
   AssemblyFlavor,
   Crate,
   DemangleAssembly,
@@ -27,6 +28,7 @@ import {
 
 import { performCommonExecute, wsExecuteRequest} from './reducers/output/execute';
 import {performGistLoad} from './reducers/output/gist';
+
 
 export const routes = {
   compile: '/compile',
@@ -107,7 +109,6 @@ export enum ActionType {
   NotificationSeen = 'NOTIFICATION_SEEN',
   BrowserWidthChanged = 'BROWSER_WIDTH_CHANGED',
   SplitRatioChanged = 'SPLIT_RATIO_CHANGED',
-  PerformNullAwayBuild = 'PERFORM_NULLAWAY_BUILD',
 }
 
 
@@ -121,16 +122,11 @@ const setPage = (page: Page) =>
 export const navigateToIndex = () => setPage('index');
 export const navigateToHelp = () => setPage('help');
 
-export const performNullAwayBuild = (configData: NullAwayConfigData) => {
-  // Log configData to console
-  console.log('Config Data:', configData);
-
-  // Return the action with configData payload
-  return createAction(ActionType.PerformNullAwayBuild, configData);
-};
 
 export const changeEditor = (editor: Editor) =>
   createAction(ActionType.ChangeEditor, { editor });
+
+
 
 export const changeKeybinding = (keybinding: string) =>
   createAction(ActionType.ChangeKeybinding, { keybinding });
@@ -231,6 +227,9 @@ async function fetchJson(url: FetchArg, args: RequestInit) {
   }
 }
 
+
+
+
 // We made some strange decisions with how the `fetchJson` function
 // communicates errors, so we untwist those here to fit better with
 // redux-toolkit's ideas.
@@ -268,7 +267,6 @@ const performCompileOnly = (): ThunkAction => performCommonExecute('build');
 
 const performNullAwayCompileOnly = (configData?: NullAwayConfigData): ThunkAction =>
   performCommonExecute('buildWithNullAway', configData);
-
 
 interface CompileSuccess {
   code: string;
@@ -326,10 +324,15 @@ const receiveCompileWasmSuccess = ({ code, stdout, stderr }: CompileSuccess) =>
 const receiveCompileWasmFailure = ({ error }: CompileFailure) =>
   createAction(ActionType.CompileWasmFailed, { error });
 
+const performRunAnnotator = (annotatorConfig?: AnnotatorConfigData) => {
+  return performCommonExecute('runAnnotator', undefined, annotatorConfig);
+};
+
 const PRIMARY_ACTIONS: { [index in PrimaryAction]: () => ThunkAction } = {
   [PrimaryActionCore.Compile]: performCompileOnly,
   [PrimaryActionCore.Execute]: performExecuteOnly,
   [PrimaryActionCore.ExecuteNullAway] : performNullAwayCompileOnly,
+  [PrimaryActionCore.RunAnnotator] : performRunAnnotator,
   [PrimaryActionAuto.Auto]: performAutoOnly,
 };
 
@@ -353,9 +356,13 @@ export const performNullAwayCompile = (configData?: NullAwayConfigData) => {
   return performCommonExecute('buildWithNullAway', configData);
 };
 
+export const runAnnotator = (configData?: AnnotatorConfigData) => {
+  return performCommonExecute('runAnnotator',undefined, configData);
+};
 
 export const editCode = (code: string) =>
   createAction(ActionType.EditCode, { code });
+
 
 export const addMainFunction = () =>
   createAction(ActionType.AddMainFunction);
@@ -593,6 +600,7 @@ export function indexPageLoad({
 
     if (code) {
       dispatch(editCode(code));
+      //dispatch(loadCodeFromFile())
     } else if (gist) {
       dispatch(performGistLoad({ id: gist, runtime, release, preview }));
     }

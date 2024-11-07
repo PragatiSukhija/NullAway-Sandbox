@@ -43,6 +43,8 @@ pub struct Version {
 pub enum Error {
     #[snafu(display("Unable to create temporary directory: {}", source))]
     UnableToCreateTempDir { source: io::Error },
+    #[snafu(display("Unable to read annotated Main.java file from the container: {}", source))]
+    FailedToReadAnnotatedFile { source: io::Error },
     #[snafu(display("Unable to create output directory: {}", source))]
     UnableToCreateOutputDir { source: io::Error },
     #[snafu(display("Unable to set permissions for output directory: {}", source))]
@@ -143,7 +145,7 @@ fn basic_secure_docker_command() -> Command {
 }
 
 fn build_execution_command(
-    req: &(impl ActionRequest + PreviewRequest + ReleaseRequest + RuntimeRequest + NullAwayConfigDataRequest),
+    req: &(impl ActionRequest + PreviewRequest + ReleaseRequest + RuntimeRequest + NullAwayConfigDataRequest + AnnotatorConfigRequest),
 ) -> Vec<String> {
     use self::Action::*;
 
@@ -229,44 +231,69 @@ fn build_execution_command(
 
         //println!("{:?}", cmd);
 
+    }else if action==RunAnnotator{
+
+        if let Some(annotator_config) = req.annotator_config() {
+            println!("Annotator Config: {:?}", annotator_config);
+        }
+
+
+        cmd.push("sh".to_string());
+        cmd.push("-c".to_string());
+        cmd.push(
+            "java -jar plugins/annotator-core-1.3.15.jar \
+            -d playground-result/ \
+            -cp config/paths.tsv \
+            -i com.example.Initializer \
+            -cn NULLAWAY \
+            -bc 'sh -c \"javac \
+                --module-path dependencies \
+                --add-modules ALL-MODULE-PATH \
+                -d output/ \
+                -J--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \
+                -J--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \
+                -J--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED \
+                -J--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED \
+                -J--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED \
+                -J--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED \
+                -J--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED \
+                -J--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED \
+                -J--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED \
+                -J--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED \
+                -XDcompilePolicy=simple \
+                -processorpath plugins/error_prone_core-2.32.0-with-dependencies.jar:\
+                plugins/dataflow-errorprone-3.42.0-eisop4.jar:\
+                plugins/nullaway-0.10.25.jar:\
+                plugins/jspecify-1.0.0.jar:\
+                plugins/dataflow-nullaway-3.47.0.jar:\
+                plugins/checker-qual-3.9.1.jar:\
+                plugins/jsr305-3.0.2.jar:\
+                plugins/annotator-scanner-1.3.15.jar \
+                -Xplugin:\\\"ErrorProne \
+                -Xep:NullAway:ERROR \
+                -Xep:AnnotatorScanner:ERROR \
+                -XepOpt:NullAway:AnnotatedPackages=com.example \
+                -XepOpt:NullAway:SerializeFixMetadata=true \
+                -XepOpt:NullAway:FixSerializationConfigPath=config/nullaway.xml \
+                -XepOpt:AnnotatorScanner:ConfigPath=config/scanner.xml\\\" \
+                 Main.java\"' -sre org.jspecify.annotations.NullUnmarked > /dev/null 2>&1 && cat Main.java".to_string()
+        );
+
+
+
+
     }else if action==Build{
+        cmd.push("javac".to_string());
+        cmd.extend(["--module-path".to_string(), "dependencies".to_string()]);
+        cmd.extend(["--add-modules".to_string(), "ALL-MODULE-PATH".to_string()]);
+        cmd.extend(["--release".to_string(), release.to_string()]);
+        cmd.extend(["-d".to_string(), "out".to_string()]);
 
-        cmd.push("java".to_string());
-        cmd.push("-jar".to_string());
-        cmd.push("plugins/annotator-core-1.3.15.jar".to_string());
-        cmd.push("-d".to_string());
-        cmd.push("playground-result/".to_string());
-        cmd.push("-cp".to_string());
-        cmd.push("config/paths.tsv".to_string());
-        cmd.push("-i".to_string());
-        cmd.push("com.example.Initializer".to_string());
-        cmd.push("-cn".to_string());
-        cmd.push("NULLAWAY".to_string());
-        cmd.push("-bc".to_string());
+        if req.preview() {
+            cmd.push("--enable-preview".to_string());
+        }
 
-
-        let javac_command = r#"javac --module-path dependencies \
-        --add-modules ALL-MODULE-PATH \
-        -d output/ \
-        -J--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \
-        -J--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \
-        -J--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED \
-        -J--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED \
-        -J--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED \
-        -J--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED \
-        -J--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED \
-        -J--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED \
-        -J--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED \
-        -J--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED \
-        -XDcompilePolicy=simple \
-        -processorpath plugins/error_prone_core-2.32.0-with-dependencies.jar:plugins/dataflow-errorprone-3.42.0-eisop4.jar:plugins/nullaway-0.10.25.jar:plugins/jspecify-1.0.0.jar:plugins/dataflow-nullaway-3.47.0.jar:plugins/checker-qual-3.9.1.jar:plugins/jsr305-3.0.2.jar:plugins/annotator-scanner-1.3.15.jar \
-        -Xplugin:'ErrorProne -Xep:NullAway:ERROR -Xep:AnnotatorScanner:ERROR -XepOpt:NullAway:AnnotatedPackages=com.example -XepOpt:NullAway:SerializeFixMetadata=true -XepOpt:NullAway:FixSerializationConfigPath=config/nullaway.xml -XepOpt:AnnotatorScanner:ConfigPath=config/scanner.xml' \
-        Main.java"#;
-
-        cmd.push(javac_command.to_string());
-
-        //println!("{:?}", cmd);
-
+        cmd.push("Main.java".to_string());
     }
 
     cmd
@@ -377,7 +404,7 @@ impl Sandbox {
 
     fn execute_command(
         &self,
-        req: impl ActionRequest + ReleaseRequest + PreviewRequest + RuntimeRequest + NullAwayConfigDataRequest,
+        req: impl ActionRequest + ReleaseRequest + PreviewRequest + RuntimeRequest + NullAwayConfigDataRequest + AnnotatorConfigRequest,
     ) -> Command {
         let mut cmd = self.docker_command(Some(req.action()));
 
@@ -469,7 +496,8 @@ async fn run_command_with_timeout(mut command: Command) -> Result<std::process::
     // ----------
 
     //Adding this to copy annotated Main.java file to working directory.
-    let local_path = "Main.java";
+    /*
+    let local_path = "frontend/Main.java";
     let container_path = format!("{}:playground/Main.java", id);
     let mut copy_command = Command::new("docker");
     copy_command.args(["cp", &container_path, local_path]);
@@ -477,6 +505,10 @@ async fn run_command_with_timeout(mut command: Command) -> Result<std::process::
         .output()
         .await
         .context(FailedToCopyFileFromContainerSnafu)?;
+
+    */
+
+
 
     let mut command = docker_command!(
         "rm", // Kills container if still running
@@ -572,6 +604,7 @@ pub enum Action {
     Run,
     Build,
     BuildWithNullAway,
+    RunAnnotator
 }
 
 impl Action {
@@ -632,6 +665,10 @@ pub trait NullAwayConfigDataRequest {
     fn nullaway_config_data(&self) -> Option<&NullAwayConfigData>;
 }
 
+pub trait AnnotatorConfigRequest {
+    fn annotator_config(&self) -> Option<&AnnotatorConfig>;
+}
+
 
 impl<R: RuntimeRequest> RuntimeRequest for &'_ R {
     fn runtime(&self) -> Runtime {
@@ -647,6 +684,8 @@ pub struct CompileRequest {
     pub preview: bool,
     pub code: String,
     pub nullaway_config_data: Option<NullAwayConfigData>,
+    pub annotator_config: Option<AnnotatorConfig>,
+
 }
 
 impl ActionRequest for CompileRequest {
@@ -657,6 +696,12 @@ impl ActionRequest for CompileRequest {
 impl NullAwayConfigDataRequest for CompileRequest {
     fn nullaway_config_data(&self) -> Option<&NullAwayConfigData> {
         self.nullaway_config_data.as_ref()
+    }
+}
+
+impl AnnotatorConfigRequest for CompileRequest {
+    fn annotator_config(&self) -> Option<&AnnotatorConfig> {
+        self.annotator_config.as_ref()
     }
 }
 
@@ -693,6 +738,12 @@ pub struct NullAwayConfigData {
     pub j_specify_mode: bool,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct AnnotatorConfig {
+    #[serde(rename = "suppressRemainingErrors")]
+    pub suppress_remaining_errors: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct CompileResponse {
     pub success: bool,
@@ -709,6 +760,7 @@ pub struct ExecuteRequest {
     pub preview: bool,
     pub code: String,
     pub nullaway_config_data: Option<NullAwayConfigData>,
+    pub annotator_config: Option<AnnotatorConfig>,
 }
 
 impl ActionRequest for ExecuteRequest {
@@ -720,6 +772,12 @@ impl ActionRequest for ExecuteRequest {
 impl NullAwayConfigDataRequest for &ExecuteRequest  {
     fn nullaway_config_data(&self) -> Option<&NullAwayConfigData> {
         self.nullaway_config_data.as_ref()
+    }
+}
+
+impl AnnotatorConfigRequest for &ExecuteRequest  {
+    fn annotator_config(&self) -> Option<&AnnotatorConfig> {
+        self.annotator_config.as_ref()
     }
 }
 
@@ -789,6 +847,7 @@ mod test {
                 release: None,
                 preview: false,
                 nullaway_config_data: None,
+                annotator_config: None,
             }
         }
     }
@@ -802,6 +861,7 @@ mod test {
                 release: None,
                 preview: false,
                 nullaway_config_data: None,
+                annotator_config: None,
             }
         }
     }

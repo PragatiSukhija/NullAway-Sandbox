@@ -74,6 +74,7 @@ export enum PrimaryActionCore {
   Compile = 'compile',
   Execute = 'execute',
   ExecuteNullAway = 'nullaway',
+  RunAnnotator = 'annotator'
 }
 
 export type PrimaryAction = PrimaryActionCore | PrimaryActionAuto;
@@ -132,4 +133,8 @@ export interface NullAwayConfigData {
   checkOptionalEmptiness: boolean;
   checkContracts: boolean;
   jSpecifyMode: boolean;
+}
+
+export interface AnnotatorConfigData {
+  suppressRemainingErrors: string;
 }
