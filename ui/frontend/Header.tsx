@@ -153,7 +153,7 @@ const NullAwayConfigMenuButton: React.FC = () => {
 const AnnotatorMenuButton: React.FC = () => {
   const Button = React.forwardRef<HTMLButtonElement, { toggle: () => void }>(({ toggle }, ref) => (
     <SegmentedButton title="Advanced compilation flags" ref={ref} onClick={toggle}>
-      <HeaderButton icon={<BuildIcon />} isExpandable>Run Annotator</HeaderButton>
+      <HeaderButton icon={<ConfigIcon />} isExpandable>Annotator Config</HeaderButton>
     </SegmentedButton>
   ));
   Button.displayName = 'AnnotatorMenuButton.Button';

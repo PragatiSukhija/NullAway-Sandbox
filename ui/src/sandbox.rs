@@ -233,15 +233,9 @@ fn build_execution_command(
 
     }else if action==RunAnnotator{
 
-        if let Some(annotator_config) = req.annotator_config() {
-            println!("Annotator Config: {:?}", annotator_config);
-        }
-
-
         cmd.push("sh".to_string());
         cmd.push("-c".to_string());
-        cmd.push(
-            "java -jar plugins/annotator-core-1.3.15.jar \
+        let mut java_command = "java -jar plugins/annotator-core-1.3.15.jar \
             -d playground-result/ \
             -cp config/paths.tsv \
             -i com.example.Initializer \
@@ -276,10 +270,19 @@ fn build_execution_command(
                 -XepOpt:NullAway:SerializeFixMetadata=true \
                 -XepOpt:NullAway:FixSerializationConfigPath=config/nullaway.xml \
                 -XepOpt:AnnotatorScanner:ConfigPath=config/scanner.xml\\\" \
-                 Main.java\"' -sre org.jspecify.annotations.NullUnmarked > /dev/null 2>&1 && cat Main.java".to_string()
-        );
+                 Main.java\"'".to_string();
+
+        if let Some(annotator_config) = req.annotator_config() {
+            if let Some(sre) = &annotator_config.suppress_remaining_errors {
+                if !sre.trim().is_empty() {
+                    java_command.push_str(&format!(" -sre {}", sre));
+                }
+            }
+        }
 
 
+        java_command.push_str(" > /dev/null 2>&1 && cat Main.java");
+        cmd.push(java_command);
 
 
     }else if action==Build{

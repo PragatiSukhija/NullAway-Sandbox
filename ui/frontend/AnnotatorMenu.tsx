@@ -32,12 +32,13 @@ const AnnotatorMenu: React.FC<BuildMenuProps> = (props) => {
       <MenuGroup title="Annotator Config">
         <div className="config-item">
           <label>
-                        SuppressRemainingErrors &nbsp;&nbsp;
+                Suppress Remaining Errors (-sre) &nbsp;&nbsp;
             <input
               type="text"
               value={suppressRemainingErrors}
               onChange={(e) => setSuppressErrors(e.target.value)}
               className="config-input"
+              style={{width: '250px'}}
             />
           </label>
         </div>

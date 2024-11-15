@@ -268,6 +268,9 @@ const performCompileOnly = (): ThunkAction => performCommonExecute('build');
 const performNullAwayCompileOnly = (configData?: NullAwayConfigData): ThunkAction =>
   performCommonExecute('buildWithNullAway', configData);
 
+const performRunAnnotatorOnly = (configData?: NullAwayConfigData,annotatorConfig?: AnnotatorConfigData): ThunkAction =>
+  performCommonExecute('runAnnotator', undefined,annotatorConfig);
+
 interface CompileSuccess {
   code: string;
   stdout: string;
@@ -342,9 +345,12 @@ export const performPrimaryAction = (): ThunkAction => (dispatch, getState) => {
   dispatch(primaryAction());
 };
 
-const performAndSwitchPrimaryAction = (inner: (configData?: NullAwayConfigData) => ThunkAction, id: PrimaryAction, configData?: NullAwayConfigData) => (): ThunkAction => dispatch => {
+const performAndSwitchPrimaryAction = (
+  inner: (configData?: NullAwayConfigData, annotatorConfig?: AnnotatorConfigData) => ThunkAction,
+  id: PrimaryAction
+) => (configData?: NullAwayConfigData, annotatorConfig?: AnnotatorConfigData): ThunkAction => dispatch => {
   dispatch(changePrimaryAction(id));
-  dispatch(inner(configData));
+  dispatch(inner(configData, annotatorConfig));
 };
 
 export const performExecute =
@@ -353,12 +359,13 @@ export const performCompile =
   performAndSwitchPrimaryAction(performCompileOnly, PrimaryActionCore.Compile);
 
 export const performNullAwayCompile = (configData?: NullAwayConfigData) => {
-  return performCommonExecute('buildWithNullAway', configData);
+  return performAndSwitchPrimaryAction(performNullAwayCompileOnly, PrimaryActionCore.ExecuteNullAway)(configData);
 };
 
-export const runAnnotator = (configData?: AnnotatorConfigData) => {
-  return performCommonExecute('runAnnotator',undefined, configData);
+export const runAnnotator = (annotatorConfigData?: AnnotatorConfigData) => {
+  return performAndSwitchPrimaryAction(performRunAnnotatorOnly, PrimaryActionCore.RunAnnotator)(undefined, annotatorConfigData);
 };
+
 
 export const editCode = (code: string) =>
   createAction(ActionType.EditCode, { code });
