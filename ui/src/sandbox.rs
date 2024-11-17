@@ -2,12 +2,14 @@ use crate::sandbox::Action::Run;
 use serde_derive::Deserialize;
 use snafu::prelude::*;
 use std::{io, os::unix::fs::PermissionsExt, path::PathBuf, string, time::Duration};
+use std::path::Path;
 use tempfile::TempDir;
 use tokio::{fs, process::Command, time};
 use tracing::debug;
+use crate::sandbox::Error::FailedToCopyFileFromContainer;
 
 pub(crate) const DOCKER_PROCESS_TIMEOUT_SOFT: Duration = Duration::from_secs(10);
-const DOCKER_PROCESS_TIMEOUT_HARD: Duration = Duration::from_secs(12);
+const DOCKER_PROCESS_TIMEOUT_HARD: Duration = Duration::from_secs(100);
 
 #[derive(Debug, Deserialize)]
 struct CrateInformationInner {
@@ -41,6 +43,8 @@ pub struct Version {
 pub enum Error {
     #[snafu(display("Unable to create temporary directory: {}", source))]
     UnableToCreateTempDir { source: io::Error },
+    #[snafu(display("Unable to read annotated Main.java file from the container: {}", source))]
+    FailedToReadAnnotatedFile { source: io::Error },
     #[snafu(display("Unable to create output directory: {}", source))]
     UnableToCreateOutputDir { source: io::Error },
     #[snafu(display("Unable to set permissions for output directory: {}", source))]
@@ -49,6 +53,8 @@ pub enum Error {
     UnableToCreateSourceFile { source: io::Error },
     #[snafu(display("Unable to set permissions for source file: {}", source))]
     UnableToSetSourcePermissions { source: io::Error },
+    #[snafu(display("Failed to copy file from container: {}", source))]
+    FailedToCopyFileFromContainer { source: io::Error },
 
     #[snafu(display("Unable to start the compiler: {}", source))]
     UnableToStartCompiler { source: io::Error },
@@ -139,7 +145,7 @@ fn basic_secure_docker_command() -> Command {
 }
 
 fn build_execution_command(
-    req: &(impl ActionRequest + PreviewRequest + ReleaseRequest + RuntimeRequest + NullAwayConfigDataRequest),
+    req: &(impl ActionRequest + PreviewRequest + ReleaseRequest + RuntimeRequest + NullAwayConfigDataRequest + AnnotatorConfigRequest),
 ) -> Vec<String> {
     use self::Action::*;
 
@@ -196,32 +202,89 @@ fn build_execution_command(
             "plugins/error_prone_core-2.32.0-with-dependencies.jar:plugins/dataflow-errorprone-3.42.0-eisop4.jar:plugins/nullaway-0.10.25.jar:plugins/jspecify-1.0.0.jar:plugins/dataflow-nullaway-3.47.0.jar:plugins/checker-qual-3.9.1.jar:plugins/jsr305-3.0.2.jar".to_string()
         ]);
 
-        let mut error_prone_options = String::from("-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepOpt:NullAway:AnnotatedPackages=com.example");
+        let mut nullaway_options = String::from("-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepOpt:NullAway:AnnotatedPackages=com.example");
 
         if let Some(nullaway_config_data) = req.nullaway_config_data() {
 
             if let Some(cast_method) = &nullaway_config_data.cast_to_non_null_method {
                 if !cast_method.is_empty() {
-                    error_prone_options.push_str(&format!(" -XepOpt:NullAway:CastToNonNullMethod={}", cast_method));
+                    nullaway_options.push_str(&format!(" -XepOpt:NullAway:CastToNonNullMethod={}", cast_method));
                 }
             }
 
             if nullaway_config_data.check_optional_emptiness {
-                error_prone_options.push_str(" -XepOpt:NullAway:CheckOptionalEmptiness=true");
+                nullaway_options.push_str(" -XepOpt:NullAway:CheckOptionalEmptiness=true");
             }
 
             if nullaway_config_data.check_contracts {
-                error_prone_options.push_str(" -XepOpt:NullAway:CheckContracts=true");
+                nullaway_options.push_str(" -XepOpt:NullAway:CheckContracts=true");
             }
 
             if nullaway_config_data.j_specify_mode {
-                error_prone_options.push_str(" -XepOpt:NullAway:JSpecifyMode=true");
+                nullaway_options.push_str(" -XepOpt:NullAway:JSpecifyMode=true");
             }
         }
 
-        cmd.extend([error_prone_options]);
+        cmd.extend([nullaway_options]);
 
         cmd.push("Main.java".to_string());
+
+        //println!("{:?}", cmd);
+
+    }else if action==RunAnnotator{
+
+        cmd.push("sh".to_string());
+        cmd.push("-c".to_string());
+        let mut java_command = "java -jar plugins/annotator-core-1.3.15.jar \
+            -d playground-result/ \
+            -cp config/paths.tsv \
+            -i com.example.Initializer \
+            -cn NULLAWAY \
+            -bc 'sh -c \"javac \
+                --module-path dependencies \
+                --add-modules ALL-MODULE-PATH \
+                -d output/ \
+                -J--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \
+                -J--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \
+                -J--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED \
+                -J--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED \
+                -J--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED \
+                -J--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED \
+                -J--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED \
+                -J--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED \
+                -J--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED \
+                -J--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED \
+                -XDcompilePolicy=simple \
+                -processorpath plugins/error_prone_core-2.32.0-with-dependencies.jar:\
+                plugins/dataflow-errorprone-3.42.0-eisop4.jar:\
+                plugins/nullaway-0.10.25.jar:\
+                plugins/jspecify-1.0.0.jar:\
+                plugins/dataflow-nullaway-3.47.0.jar:\
+                plugins/checker-qual-3.9.1.jar:\
+                plugins/jsr305-3.0.2.jar:\
+                plugins/annotator-scanner-1.3.15.jar \
+                -Xplugin:\\\"ErrorProne \
+                -Xep:NullAway:ERROR \
+                -Xep:AnnotatorScanner:ERROR \
+                -XepOpt:NullAway:AnnotatedPackages=com.example \
+                -XepOpt:NullAway:SerializeFixMetadata=true \
+                -XepOpt:NullAway:FixSerializationConfigPath=config/nullaway.xml \
+                -XepOpt:AnnotatorScanner:ConfigPath=config/scanner.xml\\\" \
+                 Main.java\"'".to_string();
+
+        if let Some(annotator_config) = req.annotator_config() {
+            if let Some(sre) = &annotator_config.suppress_remaining_errors {
+                if !sre.trim().is_empty() {
+                    java_command.push_str(&format!(" -sre {}", sre));
+                }
+            }
+        }
+
+
+        java_command.push_str(" > /dev/null 2>&1 && cat Main.java");
+        cmd.push(java_command);
+
+
     }else if action==Build{
         cmd.push("javac".to_string());
         cmd.extend(["--module-path".to_string(), "dependencies".to_string()]);
@@ -275,7 +338,9 @@ impl Sandbox {
 
     pub async fn execute(&self, req: &ExecuteRequest) -> Result<ExecuteResponse> {
         self.write_source_code(&req.code).await?;
+
         let command = self.execute_command(req);
+        //println!("Running command: {:?}", command);
 
         let output = run_command_with_timeout(command).await?;
 
@@ -342,7 +407,7 @@ impl Sandbox {
 
     fn execute_command(
         &self,
-        req: impl ActionRequest + ReleaseRequest + PreviewRequest + RuntimeRequest + NullAwayConfigDataRequest,
+        req: impl ActionRequest + ReleaseRequest + PreviewRequest + RuntimeRequest + NullAwayConfigDataRequest + AnnotatorConfigRequest,
     ) -> Command {
         let mut cmd = self.docker_command(Some(req.action()));
 
@@ -380,11 +445,15 @@ impl Sandbox {
 }
 
 async fn run_command_with_timeout(mut command: Command) -> Result<std::process::Output> {
+
+    //println!("Running command: {:?}", command);
+
     use std::os::unix::process::ExitStatusExt;
 
     let timeout = DOCKER_PROCESS_TIMEOUT_HARD;
 
     let output = command.output().await.context(UnableToStartCompilerSnafu)?;
+
 
     // Exit early, in case we don't have the container
     if !output.status.success() {
@@ -428,6 +497,21 @@ async fn run_command_with_timeout(mut command: Command) -> Result<std::process::
         .context(UnableToGetOutputFromCompilerSnafu)?;
 
     // ----------
+
+    //Adding this to copy annotated Main.java file to working directory.
+    /*
+    let local_path = "frontend/Main.java";
+    let container_path = format!("{}:playground/Main.java", id);
+    let mut copy_command = Command::new("docker");
+    copy_command.args(["cp", &container_path, local_path]);
+    let _ = copy_command
+        .output()
+        .await
+        .context(FailedToCopyFileFromContainerSnafu)?;
+
+    */
+
+
 
     let mut command = docker_command!(
         "rm", // Kills container if still running
@@ -523,6 +607,7 @@ pub enum Action {
     Run,
     Build,
     BuildWithNullAway,
+    RunAnnotator
 }
 
 impl Action {
@@ -583,6 +668,10 @@ pub trait NullAwayConfigDataRequest {
     fn nullaway_config_data(&self) -> Option<&NullAwayConfigData>;
 }
 
+pub trait AnnotatorConfigRequest {
+    fn annotator_config(&self) -> Option<&AnnotatorConfig>;
+}
+
 
 impl<R: RuntimeRequest> RuntimeRequest for &'_ R {
     fn runtime(&self) -> Runtime {
@@ -598,6 +687,8 @@ pub struct CompileRequest {
     pub preview: bool,
     pub code: String,
     pub nullaway_config_data: Option<NullAwayConfigData>,
+    pub annotator_config: Option<AnnotatorConfig>,
+
 }
 
 impl ActionRequest for CompileRequest {
@@ -608,6 +699,12 @@ impl ActionRequest for CompileRequest {
 impl NullAwayConfigDataRequest for CompileRequest {
     fn nullaway_config_data(&self) -> Option<&NullAwayConfigData> {
         self.nullaway_config_data.as_ref()
+    }
+}
+
+impl AnnotatorConfigRequest for CompileRequest {
+    fn annotator_config(&self) -> Option<&AnnotatorConfig> {
+        self.annotator_config.as_ref()
     }
 }
 
@@ -644,6 +741,12 @@ pub struct NullAwayConfigData {
     pub j_specify_mode: bool,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct AnnotatorConfig {
+    #[serde(rename = "suppressRemainingErrors")]
+    pub suppress_remaining_errors: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct CompileResponse {
     pub success: bool,
@@ -660,6 +763,7 @@ pub struct ExecuteRequest {
     pub preview: bool,
     pub code: String,
     pub nullaway_config_data: Option<NullAwayConfigData>,
+    pub annotator_config: Option<AnnotatorConfig>,
 }
 
 impl ActionRequest for ExecuteRequest {
@@ -671,6 +775,12 @@ impl ActionRequest for ExecuteRequest {
 impl NullAwayConfigDataRequest for &ExecuteRequest  {
     fn nullaway_config_data(&self) -> Option<&NullAwayConfigData> {
         self.nullaway_config_data.as_ref()
+    }
+}
+
+impl AnnotatorConfigRequest for &ExecuteRequest  {
+    fn annotator_config(&self) -> Option<&AnnotatorConfig> {
+        self.annotator_config.as_ref()
     }
 }
 
@@ -740,6 +850,7 @@ mod test {
                 release: None,
                 preview: false,
                 nullaway_config_data: None,
+                annotator_config: None,
             }
         }
     }
@@ -753,6 +864,7 @@ mod test {
                 release: None,
                 preview: false,
                 nullaway_config_data: None,
+                annotator_config: None,
             }
         }
     }

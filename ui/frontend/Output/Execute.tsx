@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 
 import * as actions from '../actions';
@@ -9,19 +9,47 @@ import Section from './Section';
 import SimplePane from './SimplePane';
 
 import styles from './Execute.module.css';
+import {editCode} from '../actions';
 
 const Execute: React.FC = () => {
-  const details = useSelector((state: State) => state.output.execute);
+  const details = useSelector((state: State) => {
+    return state.output.execute;
+  });
+
+  const primaryAction = useSelector((state: State) => state.configuration.primaryAction);
+  const stdout = useSelector((state: State) => state.output.execute.stdout);
+  const code = useSelector((state: State) => state.code);
+  const dispatch = useDispatch();
+  const [displayStdout, setDisplayStdout] = useState(stdout);
+
+
+  useEffect(() => {
+    if (primaryAction === 'annotator') {
+      if (stdout) {
+        setDisplayStdout('Annotated Successfully!');
+      } else {
+        setDisplayStdout('Waiting for Annotation...');
+      }
+    } else {
+      setDisplayStdout(stdout);
+    }
+  }, [primaryAction, stdout]);
+
+  useEffect(() => {
+    if (primaryAction === 'annotator') {
+      dispatch(editCode(stdout || code));
+    }
+  }, [primaryAction, stdout, code, dispatch]);
+
+
   const isAutoBuild = useSelector(selectors.isAutoBuildSelector);
 
-  const dispatch = useDispatch();
   const addMainFunction = useCallback(() => dispatch(actions.addMainFunction()), [dispatch]);
 
   return (
-    <SimplePane {...details} kind="execute">
+    <SimplePane {...details} kind="execute" stdout={displayStdout}>
       {isAutoBuild && <Warning addMainFunction={addMainFunction} />}
     </SimplePane>
-
   );
 };
 

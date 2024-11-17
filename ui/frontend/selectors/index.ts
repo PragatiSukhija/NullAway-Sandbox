@@ -3,13 +3,13 @@ import { createSelector } from '@reduxjs/toolkit';
 
 import { State } from '../reducers';
 import {
-  AceResizeKey,
-  Release,
-  Orientation,
-  Preview,
-  PrimaryActionAuto,
-  PrimaryActionCore,
-  Version, Runtime, NullAwayConfigData,
+    AceResizeKey,
+    Release,
+    Orientation,
+    Preview,
+    PrimaryActionAuto,
+    PrimaryActionCore,
+    Version, Runtime, NullAwayConfigData, AnnotatorConfigData,
 } from '../types';
 
 export const codeSelector = (state: State) => state.code;
@@ -29,7 +29,7 @@ const autoPrimaryActionSelector = createSelector(
     if (hasMainFunction) {
       return PrimaryActionCore.Execute;
     } else {
-      return PrimaryActionCore.Compile;
+      return PrimaryActionCore.ExecuteNullAway;
     }
   },
 );
@@ -45,11 +45,11 @@ export const getAction = createSelector(
     if (primaryAction === PrimaryActionCore.Execute) {
       return 'run';
     }
-    if (primaryAction === PrimaryActionCore.Compile){
-      return 'build'
+    if (primaryAction === PrimaryActionCore.ExecuteNullAway){
+      return 'buildWithNullAway'
     }
     else {
-      return 'buildWithNullAway';
+      return 'build';
     }
   },
 );
@@ -60,7 +60,7 @@ export const isAutoBuildSelector = createSelector(
   rawPrimaryActionSelector,
   autoPrimaryActionSelector,
   (primaryAction, autoPrimaryAction) => (
-    primaryAction === PrimaryActionAuto.Auto && autoPrimaryAction === PrimaryActionCore.Compile
+    primaryAction === PrimaryActionAuto.Auto && autoPrimaryAction === PrimaryActionCore.ExecuteNullAway
   ),
 );
 
@@ -76,6 +76,7 @@ const LABELS: { [index in PrimaryActionCore]: string } = {
   [PrimaryActionCore.Compile]: 'Build',
   [PrimaryActionCore.Execute]: 'Run',
   [PrimaryActionCore.ExecuteNullAway]: 'Build With NullAway',
+  [PrimaryActionCore.RunAnnotator]: 'Run Annotator',
 
 };
 
@@ -363,14 +364,15 @@ export const executeRequestPayloadSelector = createSelector(
 export const executeRequestPayloadSelector = createSelector(
   codeSelector,
   (state: State) => state.configuration,
-  (_state: State, { action, configData }: { action: string; configData?: NullAwayConfigData }) => ({ action, configData }),
-  (code, configuration, { action, configData }) => ({
+  (_state: State, { action, configData, annotatorConfig }: { action: string; configData?: NullAwayConfigData; annotatorConfig?: AnnotatorConfigData}) => ({ action, configData, annotatorConfig }),
+  (code, configuration, { action, configData, annotatorConfig }) => ({
     runtime: configuration.runtime,
     release: configuration.release,
     action,
     code,
     preview: configuration.preview == Preview.Enabled,
     ...configData && { configData }, // Add configData if it exists
+      ...annotatorConfig && {annotatorConfig}
   }),
 );
 

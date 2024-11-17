@@ -3,7 +3,7 @@ import * as z from 'zod';
 
 import { SimpleThunkAction, adaptFetchError, jsonPost, routes } from '../../actions';
 import { executeRequestPayloadSelector, useWebsocketSelector } from '../../selectors';
-import {NullAwayConfigData, Release, Runtime} from '../../types';
+import {AnnotatorConfigData, NullAwayConfigData, Release, Runtime} from '../../types';
 import {
   WsPayloadAction,
   createWebsocketResponseAction,
@@ -136,11 +136,11 @@ export const performCommonExecute =
 */
 
 export const performCommonExecute =
-    (action: string, configData?: NullAwayConfigData): SimpleThunkAction =>
+    (action: string, configData?: NullAwayConfigData, annotatorConfig?: AnnotatorConfigData): SimpleThunkAction =>
         (dispatch, getState) => {
-          console.log('Config Data:', configData);
+          console.log('Annotator Config Data:', annotatorConfig);
           const state = getState();
-          const body = executeRequestPayloadSelector(state, { action, configData });
+          const body = executeRequestPayloadSelector(state, { action, configData, annotatorConfig });
           const useWebSocket = useWebsocketSelector(state);
 
           if (useWebSocket) {
