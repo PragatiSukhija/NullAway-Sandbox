@@ -13,6 +13,7 @@ import {editCode} from '../actions';
 
 const Execute: React.FC = () => {
   const details = useSelector((state: State) => {
+    console.log('Current state:', state);
     return state.output.execute;
   });
 
@@ -28,7 +29,7 @@ const Execute: React.FC = () => {
       if (stdout) {
         setDisplayStdout('Annotated Successfully!');
       } else {
-        setDisplayStdout('Waiting for Annotation...');
+        setDisplayStdout('Waiting for Annotations...');
       }
     } else {
       setDisplayStdout(stdout);

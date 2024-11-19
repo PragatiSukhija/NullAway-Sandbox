@@ -136,5 +136,5 @@ export interface NullAwayConfigData {
 }
 
 export interface AnnotatorConfigData {
-  suppressRemainingErrors: string;
+  nullUnmarked: boolean;
 }

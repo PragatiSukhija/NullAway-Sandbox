@@ -202,7 +202,7 @@ fn build_execution_command(
             "plugins/error_prone_core-2.32.0-with-dependencies.jar:plugins/dataflow-errorprone-3.42.0-eisop4.jar:plugins/nullaway-0.10.25.jar:plugins/jspecify-1.0.0.jar:plugins/dataflow-nullaway-3.47.0.jar:plugins/checker-qual-3.9.1.jar:plugins/jsr305-3.0.2.jar".to_string()
         ]);
 
-        let mut nullaway_options = String::from("-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepOpt:NullAway:AnnotatedPackages=com.example");
+        let mut nullaway_options = String::from("-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepDisableAllChecks -XepOpt:NullAway:AnnotatedPackages=com.example");
 
         if let Some(nullaway_config_data) = req.nullaway_config_data() {
 
@@ -270,13 +270,14 @@ fn build_execution_command(
                 -XepOpt:NullAway:SerializeFixMetadata=true \
                 -XepOpt:NullAway:FixSerializationConfigPath=config/nullaway.xml \
                 -XepOpt:AnnotatorScanner:ConfigPath=config/scanner.xml\\\" \
-                 Main.java\"'".to_string();
+                 Main.java\"' --nullable org.jspecify.annotations.Nullable".to_string();
 
         if let Some(annotator_config) = req.annotator_config() {
-            if let Some(sre) = &annotator_config.suppress_remaining_errors {
-                if !sre.trim().is_empty() {
-                    java_command.push_str(&format!(" -sre {}", sre));
-                }
+
+            //println!("{:?}", annotator_config);
+
+            if annotator_config.nullUnmarked {
+                java_command.push_str(&" -sre org.jspecify.annotations.NullUnmarked".to_string());
             }
         }
 
@@ -743,8 +744,8 @@ pub struct NullAwayConfigData {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct AnnotatorConfig {
-    #[serde(rename = "suppressRemainingErrors")]
-    pub suppress_remaining_errors: Option<String>,
+    #[serde(rename = "nullUnmarked")]
+    pub nullUnmarked: bool,
 }
 
 #[derive(Debug, Clone)]
