@@ -6,6 +6,7 @@ import { BuildIcon } from './Icon';
 import * as actions from './actions';
 import {AnnotatorConfigData} from './types';
 import {useDispatch} from 'react-redux';
+import {CheckboxConfig} from './ConfigElement';
 
 
 interface BuildMenuProps {
@@ -14,11 +15,11 @@ interface BuildMenuProps {
 
 
 const AnnotatorMenu: React.FC<BuildMenuProps> = (props) => {
-  const [suppressRemainingErrors, setSuppressErrors] = useState('');
+  const [nullUnmarked, setNullUnmarked] = useState(false);
 
 
   const annotatorConfigData: AnnotatorConfigData = {
-    suppressRemainingErrors,
+    nullUnmarked,
   };
 
   const dispatch = useDispatch();
@@ -31,16 +32,11 @@ const AnnotatorMenu: React.FC<BuildMenuProps> = (props) => {
     <Fragment>
       <MenuGroup title="Annotator Config">
         <div className="config-item">
-          <label>
-                Suppress Remaining Errors (-sre) &nbsp;&nbsp;
-            <input
-              type="text"
-              value={suppressRemainingErrors}
-              onChange={(e) => setSuppressErrors(e.target.value)}
-              className="config-input"
-              style={{width: '250px'}}
-            />
-          </label>
+          <CheckboxConfig
+            name="&nbsp;&nbsp;Suppress remaining errors"
+            checked={nullUnmarked}
+            onChange={() => setNullUnmarked(!nullUnmarked)}
+          />
         </div>
       </MenuGroup>
 

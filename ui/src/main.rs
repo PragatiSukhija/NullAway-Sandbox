@@ -329,7 +329,7 @@ impl TryFrom<CompileRequest> for sandbox::CompileRequest {
                 j_specify_mode: data.j_specify_mode,
             }),
             annotator_config: me.annotator_config.map(|data| sandbox::AnnotatorConfig {
-                suppress_remaining_errors: data.suppress_remaining_errors,
+                nullUnmarked: data.nullUnmarked,
             }),
 
         })
@@ -364,7 +364,7 @@ impl TryFrom<ExecuteRequest> for sandbox::ExecuteRequest {
                 j_specify_mode: data.j_specify_mode,
             }),
             annotator_config: me.annotator_config.map(|data| sandbox::AnnotatorConfig {
-                suppress_remaining_errors: data.suppress_remaining_errors,
+                nullUnmarked: data.nullUnmarked,
             }),
 
         })
