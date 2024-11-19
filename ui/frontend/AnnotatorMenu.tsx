@@ -33,7 +33,7 @@ const AnnotatorMenu: React.FC<BuildMenuProps> = (props) => {
       <MenuGroup title="Annotator Config">
         <div className="config-item">
           <CheckboxConfig
-            name="&nbsp;&nbsp;Suppress Remaining Errors"
+            name="&nbsp;&nbsp;Suppress remaining errors"
             checked={nullUnmarked}
             onChange={() => setNullUnmarked(!nullUnmarked)}
           />
