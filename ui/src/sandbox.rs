@@ -1,8 +1,9 @@
-use crate::sandbox::Action::Run;
+use crate::sandbox::Action::{BuildWithNullAway, Run, RunAnnotator};
 use serde_derive::Deserialize;
 use snafu::prelude::*;
 use std::{io, os::unix::fs::PermissionsExt, path::PathBuf, string, time::Duration};
 use std::path::Path;
+use regex::Regex;
 use tempfile::TempDir;
 use tokio::{fs, process::Command, time};
 use tracing::debug;
@@ -81,6 +82,8 @@ pub enum Error {
     #[snafu(display("Output was missing"))]
     OutputMissing,
     #[snafu(display("Release was missing from the version output"))]
+    PackageNameMissing,
+    #[snafu(display("Package name is missing or could not be parsed"))]
     VersionReleaseMissing,
     #[snafu(display("Commit hash was missing from the version output"))]
     VersionHashMissing,
@@ -146,6 +149,7 @@ fn basic_secure_docker_command() -> Command {
 
 fn build_execution_command(
     req: &(impl ActionRequest + PreviewRequest + ReleaseRequest + RuntimeRequest + NullAwayConfigDataRequest + AnnotatorConfigRequest),
+    package_name: &str,
 ) -> Vec<String> {
     use self::Action::*;
 
@@ -202,7 +206,11 @@ fn build_execution_command(
             "plugins/error_prone_core-2.32.0-with-dependencies.jar:plugins/dataflow-errorprone-3.42.0-eisop4.jar:plugins/nullaway-0.10.25.jar:plugins/jspecify-1.0.0.jar:plugins/dataflow-nullaway-3.47.0.jar:plugins/checker-qual-3.9.1.jar:plugins/jsr305-3.0.2.jar".to_string()
         ]);
 
-        let mut nullaway_options = String::from("-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepDisableAllChecks -XepOpt:NullAway:AnnotatedPackages=com.example");
+        let mut nullaway_options = String::from("-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepDisableAllChecks");
+
+        if !package_name.is_empty() {
+            nullaway_options.push_str(&format!(" -XepOpt:NullAway:AnnotatedPackages={}", package_name));
+        }
 
         if let Some(nullaway_config_data) = req.nullaway_config_data() {
 
@@ -266,11 +274,17 @@ fn build_execution_command(
                 -Xplugin:\\\"ErrorProne \
                 -Xep:NullAway:ERROR \
                 -Xep:AnnotatorScanner:ERROR \
-                -XepOpt:NullAway:AnnotatedPackages=com.example \
-                -XepOpt:NullAway:SerializeFixMetadata=true \
-                -XepOpt:NullAway:FixSerializationConfigPath=config/nullaway.xml \
-                -XepOpt:AnnotatorScanner:ConfigPath=config/scanner.xml\\\" \
-                 Main.java\"' --nullable org.jspecify.annotations.Nullable".to_string();
+                -XepOpt:NullAway:AnnotatedPackages=".to_string();
+
+        if !package_name.is_empty() {
+            java_command.push_str(package_name);
+        }
+
+        java_command.push_str(" \
+            -XepOpt:NullAway:SerializeFixMetadata=true \
+            -XepOpt:NullAway:FixSerializationConfigPath=config/nullaway.xml \
+            -XepOpt:AnnotatorScanner:ConfigPath=config/scanner.xml\\\" \
+             Main.java\"' --nullable org.jspecify.annotations.Nullable");
 
         if let Some(annotator_config) = req.annotator_config() {
 
@@ -340,7 +354,19 @@ impl Sandbox {
     pub async fn execute(&self, req: &ExecuteRequest) -> Result<ExecuteResponse> {
         self.write_source_code(&req.code).await?;
 
-        let command = self.execute_command(req);
+        let package_name = self.extract_package_name(&req.code);
+        let action = req.action();
+
+        if (action == BuildWithNullAway || action == RunAnnotator) && package_name.is_empty() {
+            return Ok(ExecuteResponse {
+                success: false,
+                stdout: String::new(),
+                stderr: "Error: Package name is either missing or could not be parsed. Please specify a valid package name.\n\
+                NullAway and NullAway Annotator require valid package declarations.".to_string(),
+            });
+        }
+
+        let command = self.execute_command(req, &package_name);
         //println!("Running command: {:?}", command);
 
         let output = run_command_with_timeout(command).await?;
@@ -350,6 +376,22 @@ impl Sandbox {
             stdout: vec_to_str(output.stdout)?,
             stderr: vec_to_str(output.stderr)?,
         })
+    }
+
+    fn extract_package_name(&self, code: &str) -> String {
+
+        let package_regex = Regex::new(r"(?m)^\s*package\s+([\w\.]+);");
+
+        if let Ok(regex) = package_regex {
+
+            if let Some(captures) = regex.captures(code) {
+                if let Some(package_name) = captures.get(1) {
+                    return package_name.as_str().to_string();
+                }
+            }
+        }
+
+        String::new()
     }
 
     pub async fn crates(&self) -> Result<Vec<CrateInformation>> {
@@ -409,10 +451,11 @@ impl Sandbox {
     fn execute_command(
         &self,
         req: impl ActionRequest + ReleaseRequest + PreviewRequest + RuntimeRequest + NullAwayConfigDataRequest + AnnotatorConfigRequest,
+        package_name: &str,
     ) -> Command {
         let mut cmd = self.docker_command(Some(req.action()));
 
-        let execution_cmd = build_execution_command(&req);
+        let execution_cmd = build_execution_command(&req,package_name);
 
         cmd.arg(&req.runtime().container_name())
             .args(&execution_cmd);
