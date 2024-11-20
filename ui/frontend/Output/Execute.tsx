@@ -1,19 +1,19 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import {useDispatch, useSelector} from 'react-redux';
 
 import * as actions from '../actions';
+import {editCode} from '../actions';
 import * as selectors from '../selectors';
-import { State } from '../reducers';
+import {State} from '../reducers';
 
 import Section from './Section';
 import SimplePane from './SimplePane';
 
 import styles from './Execute.module.css';
-import {editCode} from '../actions';
+import {resetStdout} from '../reducers/output/execute';
 
 const Execute: React.FC = () => {
   const details = useSelector((state: State) => {
-    console.log('Current state:', state);
     return state.output.execute;
   });
 
@@ -22,7 +22,7 @@ const Execute: React.FC = () => {
   const code = useSelector((state: State) => state.code);
   const dispatch = useDispatch();
   const [displayStdout, setDisplayStdout] = useState(stdout);
-
+  const [annotationComplete, setAnnotationComplete] = useState(false);
 
   useEffect(() => {
     if (primaryAction === 'annotator') {
@@ -37,10 +37,18 @@ const Execute: React.FC = () => {
   }, [primaryAction, stdout]);
 
   useEffect(() => {
-    if (primaryAction === 'annotator') {
+    if (primaryAction === 'annotator' && stdout && !annotationComplete) {
       dispatch(editCode(stdout || code));
+      dispatch(resetStdout());
+      setAnnotationComplete(true);
     }
   }, [primaryAction, stdout, code, dispatch]);
+
+  useEffect(() => {
+    if (primaryAction === 'annotator' && !stdout) {
+      setAnnotationComplete(false);
+    }
+  }, [primaryAction, stdout]);
 
 
   const isAutoBuild = useSelector(selectors.isAutoBuildSelector);
