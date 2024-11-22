@@ -4,6 +4,8 @@ import { performFormat } from './output/format'
 
 const DEFAULT: State = `package com.example;
 
+import org.jspecify.annotations.*;
+
 public class Main {
     
     static void log(Object x) {

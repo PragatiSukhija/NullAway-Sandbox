@@ -79,6 +79,10 @@ const slice = createSlice({
         meta: makeWebSocketMeta(),
       }),
     },
+
+    resetStdout: (state) => {
+      state.stdout = undefined;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -117,7 +121,7 @@ const slice = createSlice({
   },
 });
 
-export const { wsExecuteRequest } = slice.actions;
+export const { wsExecuteRequest, resetStdout } = slice.actions;
 
 /*
 export const performCommonExecute =
