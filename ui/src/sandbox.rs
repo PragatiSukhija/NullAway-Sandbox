@@ -206,7 +206,7 @@ fn build_execution_command(
             "plugins/error_prone_core-2.32.0-with-dependencies.jar:plugins/dataflow-errorprone-3.42.0-eisop4.jar:plugins/nullaway-0.10.25.jar:plugins/jspecify-1.0.0.jar:plugins/dataflow-nullaway-3.47.0.jar:plugins/checker-qual-3.9.1.jar:plugins/jsr305-3.0.2.jar".to_string()
         ]);
 
-        let mut nullaway_options = String::from("-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepDisableAllChecks");
+        let mut nullaway_options = String::from("-Xplugin:ErrorProne -XepDisableAllChecks -Xep:NullAway:ERROR");
 
         if !package_name.is_empty() {
             nullaway_options.push_str(&format!(" -XepOpt:NullAway:AnnotatedPackages={}", package_name));
@@ -239,66 +239,61 @@ fn build_execution_command(
 
         //println!("{:?}", cmd);
 
-    }else if action==RunAnnotator{
-
+    }else if action == RunAnnotator {
         cmd.push("sh".to_string());
         cmd.push("-c".to_string());
-        let mut java_command = "java -jar plugins/annotator-core-1.3.15.jar \
-            -d playground-result/ \
-            -cp config/paths.tsv \
-            -i com.example.Initializer \
-            -cn NULLAWAY \
-            -bc 'sh -c \"javac \
-                --module-path dependencies \
-                --add-modules ALL-MODULE-PATH \
-                -d output/ \
-                -J--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \
-                -J--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \
-                -J--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED \
-                -J--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED \
-                -J--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED \
-                -J--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED \
-                -J--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED \
-                -J--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED \
-                -J--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED \
-                -J--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED \
-                -XDcompilePolicy=simple \
-                -processorpath plugins/error_prone_core-2.32.0-with-dependencies.jar:\
-                plugins/dataflow-errorprone-3.42.0-eisop4.jar:\
-                plugins/nullaway-0.10.25.jar:\
-                plugins/jspecify-1.0.0.jar:\
-                plugins/dataflow-nullaway-3.47.0.jar:\
-                plugins/checker-qual-3.9.1.jar:\
-                plugins/jsr305-3.0.2.jar:\
-                plugins/annotator-scanner-1.3.15.jar \
-                -Xplugin:\\\"ErrorProne \
-                -Xep:NullAway:ERROR \
-                -Xep:AnnotatorScanner:ERROR \
-                -XepOpt:NullAway:AnnotatedPackages=".to_string();
 
-        if !package_name.is_empty() {
-            java_command.push_str(package_name);
-        }
-
-        java_command.push_str(" \
+        // Base Java command
+        let mut java_command = format!(
+            "java -jar plugins/annotator-core-1.3.15.jar \
+        -d playground-result/ \
+        -cp config/paths.tsv \
+        -i com.example.Initializer \
+        -cn NULLAWAY \
+        -bc 'sh -c \"javac \
+            --module-path dependencies \
+            --add-modules ALL-MODULE-PATH \
+            -d output/ \
+            -J--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \
+            -J--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \
+            -J--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED \
+            -J--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED \
+            -J--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED \
+            -J--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED \
+            -J--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED \
+            -J--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED \
+            -J--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED \
+            -J--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED \
+            -XDcompilePolicy=simple \
+            -processorpath {processor_path} \
+            -Xplugin:\\\"ErrorProne \
+            -Xep:NullAway:ERROR \
+            -Xep:AnnotatorScanner:ERROR \
+            -XepOpt:NullAway:AnnotatedPackages={package} \
             -XepOpt:NullAway:SerializeFixMetadata=true \
             -XepOpt:NullAway:FixSerializationConfigPath=config/nullaway.xml \
             -XepOpt:AnnotatorScanner:ConfigPath=config/scanner.xml\\\" \
-             Main.java\"' --nullable org.jspecify.annotations.Nullable");
+            Main.java\"' --nullable org.jspecify.annotations.Nullable",
+            processor_path = "plugins/error_prone_core-2.32.0-with-dependencies.jar:\
+            plugins/dataflow-errorprone-3.42.0-eisop4.jar:\
+            plugins/nullaway-0.10.25.jar:\
+            plugins/jspecify-1.0.0.jar:\
+            plugins/dataflow-nullaway-3.47.0.jar:\
+            plugins/checker-qual-3.9.1.jar:\
+            plugins/jsr305-3.0.2.jar:\
+            plugins/annotator-scanner-1.3.15.jar",
+            package = package_name
+        );
+
 
         if let Some(annotator_config) = req.annotator_config() {
-
-            //println!("{:?}", annotator_config);
-
             if annotator_config.nullUnmarked {
-                java_command.push_str(&" -sre org.jspecify.annotations.NullUnmarked".to_string());
+                java_command.push_str(" -sre org.jspecify.annotations.NullUnmarked");
             }
         }
 
-
         java_command.push_str(" > /dev/null 2>&1 && cat Main.java");
         cmd.push(java_command);
-
 
     }else if action==Build{
         cmd.push("javac".to_string());
