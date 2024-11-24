@@ -38,12 +38,13 @@ const BuildMenu: React.FC<BuildMenuProps> = props => {
       <ButtonMenuItem name="Annotate" onClick={annotate}>
             Annotate the code with NullAway Annotator.
       </ButtonMenuItem>
-      <ButtonMenuItem name="Run" onClick={execute}>
+
+        {/* <ButtonMenuItem name="Run" onClick={execute}>
             Build and run the code, showing the output. Equivalent to <Code>java Main.java</Code>.
       </ButtonMenuItem>
       <ButtonMenuItem name="Build" onClick={compile}>
             Build the code without running it. Equivalent to <Code>javac Main.java</Code>.
-      </ButtonMenuItem>
+      </ButtonMenuItem> */}
     </MenuGroup>
   );
 };
