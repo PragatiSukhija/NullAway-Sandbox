@@ -3,13 +3,13 @@ import { createSelector } from '@reduxjs/toolkit';
 
 import { State } from '../reducers';
 import {
-    AceResizeKey,
-    Release,
-    Orientation,
-    Preview,
-    PrimaryActionAuto,
-    PrimaryActionCore,
-    Version, Runtime, NullAwayConfigData, AnnotatorConfigData,
+  AceResizeKey,
+  Release,
+  Orientation,
+  Preview,
+  PrimaryActionAuto,
+  PrimaryActionCore,
+  Version, Runtime, NullAwayConfigData, AnnotatorConfigData,
 } from '../types';
 
 export const codeSelector = (state: State) => state.code;
@@ -132,7 +132,14 @@ export const getAdvancedOptionsSet = createSelector(
   ),
 );
 
-export const hasProperties = (obj: {}) => Object.values(obj).some(val => !!val);
+export const hasProperties = (obj: {}) => {
+  const values = Object.values(obj);
+  const hasTruthyValues = values.some(val => !!val);
+  const hasEmptyStrings = values.length > 1 && values.slice(1).every(val => val === '' || val === undefined);
+  return hasTruthyValues || hasEmptyStrings;
+};
+
+
 
 const getOutputs = (state: State) => [
   state.output.assembly,
@@ -372,7 +379,7 @@ export const executeRequestPayloadSelector = createSelector(
     code,
     preview: configuration.preview == Preview.Enabled,
     ...configData && { configData }, // Add configData if it exists
-      ...annotatorConfig && {annotatorConfig}
+    ...annotatorConfig && {annotatorConfig},
   }),
 );
 
