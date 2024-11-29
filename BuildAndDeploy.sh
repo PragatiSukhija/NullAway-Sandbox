@@ -10,8 +10,6 @@ run_command() {
     eval "$1" || handle_error "$1"
 }
 
-
-run_command "sudo -i" "Switching to superuser..."
 run_command "cd /opt/NullAway-Sandbox/"
 run_command "git pull origin main" "Pulling the latest changes from the main branch..."
 run_command "cd /opt/NullAway-Sandbox/ui/frontend"
